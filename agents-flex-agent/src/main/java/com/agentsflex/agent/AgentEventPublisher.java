@@ -14,6 +14,7 @@ import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.AgentFormDefinition;
 import com.agentsflex.agent.tool.ToolApprovalDecision;
 import com.agentsflex.core.message.ToolCall;
+import com.agentsflex.core.message.AiMessage;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.util.StringUtil;
@@ -110,9 +111,19 @@ final class AgentEventPublisher {
      */
     void notifyModelEnd(AgentTurn turn, AiMessageResponse response) {
         Map<String, Object> values = iterationAttributes(turn);
+        AiMessage message = response == null ? null : response.getMessage();
         values.put("hasToolCalls",
-            response != null && response.getMessage() != null
-                && response.getMessage().hasToolCalls());
+            message != null && message.hasToolCalls());
+        if (message != null) {
+            Integer inputTokens = message.getPromptTokens() != null
+                ? message.getPromptTokens() : message.getLocalPromptTokens();
+            Integer outputTokens = message.getCompletionTokens() != null
+                ? message.getCompletionTokens() : message.getLocalCompletionTokens();
+            values.putAll(attributes("inputTokens", inputTokens,
+                "outputTokens", outputTokens,
+                "cacheReadInputTokens", message.getPromptCacheHitTokens(),
+                "cacheMissInputTokens", message.getPromptCacheMissTokens()));
+        }
         publish(turn, AgentEventType.MODEL_COMPLETED, values);
     }
 
@@ -194,7 +205,7 @@ final class AgentEventPublisher {
      * @param turn 已完成 Turn
      */
     void notifyTurnComplete(AgentTurn turn) {
-        publish(turn, AgentEventType.TURN_COMPLETED, null);
+        publish(turn, AgentEventType.TURN_COMPLETED, usageAttributes(turn));
     }
 
     /**
@@ -204,7 +215,9 @@ final class AgentEventPublisher {
      * @param error 导致失败的异常
      */
     void notifyTurnFailed(AgentTurn turn, Throwable error) {
-        publish(turn, AgentEventType.TURN_FAILED, attributes("error", errorMessage(error)));
+        Map<String, Object> values = usageAttributes(turn);
+        values.put("error", errorMessage(error));
+        publish(turn, AgentEventType.TURN_FAILED, values);
     }
 
     /**
@@ -213,7 +226,15 @@ final class AgentEventPublisher {
      * @param turn 已取消 Turn
      */
     void notifyTurnCancelled(AgentTurn turn) {
-        publish(turn, AgentEventType.TURN_CANCELLED, null);
+        publish(turn, AgentEventType.TURN_CANCELLED, usageAttributes(turn));
+    }
+
+    private Map<String, Object> usageAttributes(AgentTurn turn) {
+        return attributes("inputTokens", turn.getInputTokens(),
+            "outputTokens", turn.getOutputTokens(),
+            "totalTokens", turn.getTotalTokens(),
+            "cacheReadInputTokens", turn.getCacheReadInputTokens(),
+            "cacheMissInputTokens", turn.getCacheMissInputTokens());
     }
 
     /**

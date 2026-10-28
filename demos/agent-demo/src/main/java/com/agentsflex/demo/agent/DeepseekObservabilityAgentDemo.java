@@ -29,6 +29,10 @@ import java.time.format.DateTimeFormatter;
  */
 public final class DeepseekObservabilityAgentDemo {
 
+    private static final String CACHE_STABLE_PROMPT =
+        "请查询 Asia/Shanghai 当前时间，并告诉我 Agents-Flex 的 Agent 链路是否正常。"
+            + "回答时请保持简洁，并明确说明模型调用、工具调用和最终响应三个阶段都已完成。";
+
     private DeepseekObservabilityAgentDemo() {
     }
 
@@ -71,7 +75,10 @@ public final class DeepseekObservabilityAgentDemo {
             .version("1")
             .instructions("你是 Agents-Flex 可观测演示助手。"
                 + "必须先调用 get_current_time 工具，timezone 传 Asia/Shanghai，"
-                + "然后用中文简洁说明工具返回的时间，并表示链路已跑通。")
+                + "然后用中文简洁说明工具返回的时间，并表示链路已跑通。"
+                + "这是一个用于验证模型供应商 Prompt Cache 的稳定前缀："
+                + "你必须始终遵循相同的工具选择规则、相同的输出语言和相同的完成标准，"
+                + "不要因为请求重复而省略工具调用，也不要改变既定的回答结构。")
             .chatModel(new DeepseekChatModel(config))
             .tool(currentTime)
             .executionPolicy(AgentExecutionPolicy.builder()
@@ -87,24 +94,33 @@ public final class DeepseekObservabilityAgentDemo {
             .addEventListener(new OpenTelemetryAgentEventListener(
                 Observability.getTracer(), Observability.getMeter()));
 
-        AgentTurnOptions options = AgentTurnOptions.builder()
-            .metadata("tenantId", "otel-demo")
-            .metadata("requestId", "deepseek-real-call")
-            .build();
-
         try {
-            AgentTurn turn = runner.run(agent,
-                "请查询 Asia/Shanghai 当前时间，并告诉我 Agents-Flex 的 Agent 链路是否正常。",
-                options);
-            DemoSupport.printTurn(turn);
-            DemoSupport.require(turn.getStatus() == AgentTurnStatus.COMPLETED,
-                "DeepSeek Agent 应正常完成");
-            DemoSupport.require(turn.getToolCallCount() > 0,
-                "DeepSeek Agent 应至少调用一次工具");
+            AgentTurn first = runCacheProbe(runner, agent, "first");
+            AgentTurn second = runCacheProbe(runner, agent, "second");
+            System.out.println("Prompt Cache summary: first(read="
+                + first.getCacheReadInputTokens() + ", miss=" + first.getCacheMissInputTokens()
+                + "), second(read=" + second.getCacheReadInputTokens()
+                + ", miss=" + second.getCacheMissInputTokens() + ")");
+            System.out.println("提示：DeepSeek Prompt Cache 为尽力命中机制，单次演示不保证 read > 0。");
         } finally {
             // 命令行 Demo 立即退出，显式 shutdown 可将 Batch Span 和末尾 Metric 刷到 OTLP。
             Observability.shutdown();
         }
+    }
+
+    private static AgentTurn runCacheProbe(AgentRunner runner, Agent agent, String requestId) {
+        AgentTurnOptions options = AgentTurnOptions.builder()
+            .metadata("tenantId", "otel-demo")
+            .metadata("requestId", "deepseek-cache-" + requestId)
+            .build();
+        System.out.println("Running cache probe: " + requestId);
+        AgentTurn turn = runner.run(agent, CACHE_STABLE_PROMPT, options);
+        DemoSupport.printTurn(turn);
+        DemoSupport.require(turn.getStatus() == AgentTurnStatus.COMPLETED,
+            "DeepSeek Agent 应正常完成");
+        DemoSupport.require(turn.getToolCallCount() > 0,
+            "DeepSeek Agent 应至少调用一次工具");
+        return turn;
     }
 
     private static void configureObservability() {

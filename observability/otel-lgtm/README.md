@@ -34,6 +34,7 @@ export MAVEN_OPTS="-Dotel.exporter.otlp.endpoint=http://127.0.0.1:4317"
 ## 3. 查看数据
 
 - 首页会打开 `Agents-Flex / Agents-Flex DeepSeek Agent Observability` 面板；
+- 面板包含 Prompt Cache read/miss Token、Token 命中率、请求结果分布和 Agent 侧 Token 用量；
 - `Explore -> Tempo` 可查看 `agent.turn`、`agent.model`、`agent.tool`、`deepseek.chat` 和 `http.client.request` Span；
 - `Explore -> Prometheus` 可查看 `agentsflex_*`、`gen_ai_*` 和 `http_client_*` Metrics。
 

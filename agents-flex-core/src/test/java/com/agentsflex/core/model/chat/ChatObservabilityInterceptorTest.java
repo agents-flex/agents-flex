@@ -186,6 +186,8 @@ public class ChatObservabilityInterceptorTest {
         message.setLocalPromptTokens(99);
         message.setCompletionTokens(7);
         message.setLocalCompletionTokens(88);
+        message.setPromptCacheHitTokens(8);
+        message.setPromptCacheMissTokens(4);
         message.setFinishReason("stop");
         CollectingSpanExporter exporter = new CollectingSpanExporter();
 
@@ -209,6 +211,10 @@ public class ChatObservabilityInterceptorTest {
             span.getAttributes().get(ObservabilityAttributeKeys.GEN_AI_USAGE_INPUT_TOKENS));
         assertEquals(Long.valueOf(7),
             span.getAttributes().get(ObservabilityAttributeKeys.GEN_AI_USAGE_OUTPUT_TOKENS));
+        assertEquals(Long.valueOf(8),
+            span.getAttributes().get(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS));
+        assertEquals(Long.valueOf(4),
+            span.getAttributes().get(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS));
         assertEquals(Collections.singletonList("stop"),
             span.getAttributes().get(ObservabilityAttributeKeys.GEN_AI_RESPONSE_FINISH_REASONS));
         assertEquals(Long.valueOf(512),
@@ -269,6 +275,8 @@ public class ChatObservabilityInterceptorTest {
         AiMessage message = new AiMessage("ok");
         message.setPromptTokens(10);
         message.setCompletionTokens(4);
+        message.setPromptCacheHitTokens(6);
+        message.setPromptCacheMissTokens(4);
         CollectingMetricExporter metricExporter = new CollectingMetricExporter();
 
         try (TelemetryRoute route = TelemetryRoute.builder("canonical-gen-ai-metrics")
@@ -291,6 +299,9 @@ public class ChatObservabilityInterceptorTest {
         assertTrue(metricNames.contains("agentsflex.gen_ai.request.count"));
         assertTrue(metricNames.contains("gen_ai.client.operation.duration"));
         assertTrue(metricNames.contains("gen_ai.client.token.usage"));
+        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.read.input_tokens"));
+        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.miss.input_tokens"));
+        assertTrue(metricNames.contains("agentsflex.gen_ai.cache.request.count"));
         assertFalse(metricNames.contains("llm.request.count"));
         assertFalse(metricNames.contains("llm.request.latency"));
     }

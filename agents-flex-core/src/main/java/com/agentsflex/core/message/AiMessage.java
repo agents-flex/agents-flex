@@ -87,6 +87,14 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
      */
     private Map<String, Object> completionTokensDetails;
     /**
+     * 模型服务报告的输入缓存命中 Token 数。
+     */
+    private Integer promptCacheHitTokens;
+    /**
+     * 模型服务报告的输入缓存未命中 Token 数。
+     */
+    private Integer promptCacheMissTokens;
+    /**
      * 本地 Token 计数器估算的输入 Token 数。
      */
     private Integer localPromptTokens;
@@ -177,6 +185,12 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         }
         if (delta.completionTokensDetails != null) {
             this.completionTokensDetails = copyMap(delta.completionTokensDetails);
+        }
+        if (delta.promptCacheHitTokens != null) {
+            this.promptCacheHitTokens = delta.promptCacheHitTokens;
+        }
+        if (delta.promptCacheMissTokens != null) {
+            this.promptCacheMissTokens = delta.promptCacheMissTokens;
         }
         if (delta.localPromptTokens != null) this.localPromptTokens = delta.localPromptTokens;
         if (delta.localCompletionTokens != null) this.localCompletionTokens = delta.localCompletionTokens;
@@ -368,6 +382,22 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         this.completionTokensDetails = completionTokensDetails == null ? null : copyMap(completionTokensDetails);
     }
 
+    public Integer getPromptCacheHitTokens() {
+        return promptCacheHitTokens;
+    }
+
+    public void setPromptCacheHitTokens(Integer promptCacheHitTokens) {
+        this.promptCacheHitTokens = promptCacheHitTokens;
+    }
+
+    public Integer getPromptCacheMissTokens() {
+        return promptCacheMissTokens;
+    }
+
+    public void setPromptCacheMissTokens(Integer promptCacheMissTokens) {
+        this.promptCacheMissTokens = promptCacheMissTokens;
+    }
+
     public Integer getLocalPromptTokens() {
         return localPromptTokens;
     }
@@ -485,6 +515,8 @@ public class AiMessage extends AbstractTextMessage<AiMessage> {
         copy.totalTokens = this.totalTokens;
         copy.promptTokensDetails = copyMap(this.promptTokensDetails);
         copy.completionTokensDetails = copyMap(this.completionTokensDetails);
+        copy.promptCacheHitTokens = this.promptCacheHitTokens;
+        copy.promptCacheMissTokens = this.promptCacheMissTokens;
         copy.localPromptTokens = this.localPromptTokens;
         copy.localCompletionTokens = this.localCompletionTokens;
         copy.localTotalTokens = this.localTotalTokens;

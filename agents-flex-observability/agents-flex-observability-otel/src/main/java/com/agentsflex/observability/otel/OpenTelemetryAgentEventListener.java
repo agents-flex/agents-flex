@@ -67,8 +67,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
     private final ConcurrentHashMap<String, ToolSpanState> toolSpans = new ConcurrentHashMap<>();
 
     /**
-     * Token 用量直方图，维度 {@code gen_ai.token.type}。当前事件模型不携带 token 字段，
-     * instrument 建好备用，但不 record（已知缺口）。
+     * Token 用量直方图，维度 {@code gen_ai.token.type}。
      */
     private final DoubleHistogram tokenUsage;
     /**
@@ -191,7 +190,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
             log.debug("MODEL_COMPLETED without matching MODEL_STARTED for turn {}", e.getTurnId());
             return;
         }
-        // 事件 data 不含 token 字段，tokenUsage instrument 建好但当前不 record（已知缺口）。
+        recordModelUsage(modelSpan, e);
         modelSpan.end();
     }
 
@@ -243,6 +242,7 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
         String turnId = e.getTurnId();
         Span root = turnSpans.remove(turnId);
         if (root != null) {
+            setTokenAttributes(root, e);
             if (errorText != null) {
                 root.setStatus(StatusCode.ERROR, errorText);
             }
@@ -312,6 +312,36 @@ public final class OpenTelemetryAgentEventListener implements AgentEventListener
             builder.put(OtelAttributeNames.OUTCOME, outcome);
         }
         return builder.build();
+    }
+
+    private void recordModelUsage(Span span, AgentEvent e) {
+        setTokenAttributes(span, e);
+        recordTokenMetric(e, "inputTokens", "input");
+        recordTokenMetric(e, "outputTokens", "output");
+        recordTokenMetric(e, "cacheReadInputTokens", "cache_read");
+        recordTokenMetric(e, "cacheMissInputTokens", "cache_miss");
+    }
+
+    private void setTokenAttributes(Span span, AgentEvent e) {
+        Long input = asLong(e.getData().get("inputTokens"));
+        Long output = asLong(e.getData().get("outputTokens"));
+        Long cacheRead = asLong(e.getData().get("cacheReadInputTokens"));
+        Long cacheMiss = asLong(e.getData().get("cacheMissInputTokens"));
+        if (input != null) span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_INPUT_TOKENS, input);
+        if (output != null) span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_OUTPUT_TOKENS, output);
+        if (cacheRead != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS, cacheRead);
+        }
+        if (cacheMiss != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS, cacheMiss);
+        }
+    }
+
+    private void recordTokenMetric(AgentEvent e, String field, String tokenType) {
+        Long value = asLong(e.getData().get(field));
+        if (value == null || value < 0) return;
+        tokenUsage.record(value.doubleValue(), Attributes.of(
+            ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, tokenType));
     }
 
     private static double seconds(long startNanos) {

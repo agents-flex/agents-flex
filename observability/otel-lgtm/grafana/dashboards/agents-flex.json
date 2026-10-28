@@ -83,8 +83,38 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 8, "x": 0, "y": 5},
+      "id": 10,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)", "legendFormat": "cache read tokens", "range": true, "refId": "A"}],
+      "title": "Cache Read Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "unit": "short", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 8, "x": 8, "y": 5},
+      "id": 11,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(agentsflex_gen_ai_cache_miss_input_tokens_total{service_name=\"$service\"}) or vector(0)", "legendFormat": "cache miss tokens", "range": true, "refId": "A"}],
+      "title": "Cache Miss Tokens",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "decimals": 1, "max": 100, "min": 0, "unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 30}, {"color": "green", "value": 70}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 8, "x": 16, "y": 5},
+      "id": 12,
+      "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "100 * (sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)) / clamp_min((sum(agentsflex_gen_ai_cache_read_input_tokens_total{service_name=\"$service\"}) or vector(0)) + (sum(agentsflex_gen_ai_cache_miss_input_tokens_total{service_name=\"$service\"}) or vector(0)), 1)", "legendFormat": "token hit rate", "range": true, "refId": "A"}],
+      "title": "Token Cache Hit Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "seconds", "axisPlacement": "auto", "drawStyle": "line", "fillOpacity": 16, "lineInterpolation": "smooth", "lineWidth": 2, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "none"}}, "unit": "s"}, "overrides": []},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
       "id": 7,
       "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
       "targets": [
@@ -98,7 +128,7 @@
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "tokens", "axisPlacement": "auto", "drawStyle": "bars", "fillOpacity": 30, "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "normal"}}, "unit": "short"}, "overrides": []},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
       "id": 8,
       "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
       "targets": [{"editorMode": "code", "expr": "sum by (gen_ai_token_type) (gen_ai_client_token_usage_sum{service_name=\"$service\"})", "legendFormat": "{{gen_ai_token_type}}", "range": true, "refId": "A"}],
@@ -107,8 +137,28 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 18},
+      "id": 13,
+      "options": {"displayLabels": ["name", "value", "percent"], "legend": {"displayMode": "table", "placement": "bottom", "showLegend": true, "values": ["value", "percent"]}, "pieType": "pie", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "tooltip": {"hideZeros": false, "mode": "single", "sort": "none"}},
+      "targets": [{"editorMode": "code", "expr": "sum by (agentsflex_cache_outcome) (agentsflex_gen_ai_cache_request_count_total{service_name=\"$service\"})", "instant": true, "legendFormat": "{{agentsflex_cache_outcome}}", "range": false, "refId": "A"}],
+      "title": "Cache Request Outcomes",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "tokens", "axisPlacement": "auto", "drawStyle": "bars", "fillOpacity": 30, "lineWidth": 1, "pointSize": 5, "showPoints": "never", "spanNulls": false, "stacking": {"group": "A", "mode": "normal"}}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 18},
+      "id": 14,
+      "options": {"legend": {"calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "sum by (gen_ai_token_type) (agentsflex_agent_token_usage_sum{service_name=\"$service\"})", "legendFormat": "{{gen_ai_token_type}}", "range": true, "refId": "A"}],
+      "title": "Agent Model Token Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {"defaults": {}, "overrides": []},
-      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 13},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 26},
       "id": 9,
       "options": {"cellHeight": "sm", "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true},
       "targets": [{"editorMode": "code", "expr": "{service_name=\"$service\", __name__=~\"agentsflex_.*|gen_ai_.*|http_client_.*\"}", "format": "table", "instant": true, "legendFormat": "__auto", "range": false, "refId": "A"}],

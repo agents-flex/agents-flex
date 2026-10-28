@@ -185,6 +185,8 @@ public class AgentSnapshotTest {
             message.setPromptTokens(12);
             message.setCompletionTokens(5);
             message.setTotalTokens(17);
+            message.setPromptCacheHitTokens(8);
+            message.setPromptCacheMissTokens(4);
             return message;
         });
         InMemoryAgentTurnStore store = new InMemoryAgentTurnStore();
@@ -197,22 +199,34 @@ public class AgentSnapshotTest {
         assertEquals(12, turn.getInputTokens());
         assertEquals(5, turn.getOutputTokens());
         assertEquals(17, turn.getTotalTokens());
+        assertEquals(8, turn.getCacheReadInputTokens());
+        assertEquals(4, turn.getCacheMissInputTokens());
         assertEquals(17, snapshot.getState().getTotalTokens());
+        assertEquals(8, snapshot.getState().getCacheReadInputTokens());
+        assertEquals(4, snapshot.getState().getCacheMissInputTokens());
     }
 
     private static Tool tool(String name, Function<Map<String, Object>, Object> function) {
         return new Tool() {
             @Override
-            public String getName() { return name; }
+            public String getName() {
+                return name;
+            }
 
             @Override
-            public String getDescription() { return name; }
+            public String getDescription() {
+                return name;
+            }
 
             @Override
-            public Parameter[] getParameters() { return new Parameter[0]; }
+            public Parameter[] getParameters() {
+                return new Parameter[0];
+            }
 
             @Override
-            public Object invoke(Map<String, Object> argsMap) { return function.apply(argsMap); }
+            public Object invoke(Map<String, Object> argsMap) {
+                return function.apply(argsMap);
+            }
         };
     }
 
@@ -268,10 +282,15 @@ public class AgentSnapshotTest {
             return delegate.load(turnId);
         }
 
-        @Override public AgentTurnSnapshot findActiveTurn(String conversationId) {
+        @Override
+        public AgentTurnSnapshot findActiveTurn(String conversationId) {
             return delegate.findActiveTurn(conversationId);
         }
-        @Override public long currentTimeMillis() { return delegate.currentTimeMillis(); }
+
+        @Override
+        public long currentTimeMillis() {
+            return delegate.currentTimeMillis();
+        }
 
         @Override
         public boolean requestCancellation(String turnId) {

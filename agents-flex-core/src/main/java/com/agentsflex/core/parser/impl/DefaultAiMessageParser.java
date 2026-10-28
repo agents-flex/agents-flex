@@ -264,8 +264,23 @@ public class DefaultAiMessageParser implements AiMessageParser<JSONObject> {
 
         JSONObject usage = rootJson.getJSONObject("usage");
         if (usage != null) {
-            aiMessage.setPromptTokensDetails(usage.getJSONObject("prompt_tokens_details"));
+            JSONObject promptDetails = usage.getJSONObject("prompt_tokens_details");
+            aiMessage.setPromptTokensDetails(promptDetails);
             aiMessage.setCompletionTokensDetails(usage.getJSONObject("completion_tokens_details"));
+            Integer cacheHitTokens = usage.getInteger("prompt_cache_hit_tokens");
+            if (cacheHitTokens == null && promptDetails != null) {
+                cacheHitTokens = promptDetails.getInteger("cached_tokens");
+            }
+            Integer cacheMissTokens = usage.getInteger("prompt_cache_miss_tokens");
+            Integer promptTokens = aiMessage.getPromptTokens();
+            if (cacheMissTokens == null && cacheHitTokens != null && promptTokens != null) {
+                cacheMissTokens = Math.max(0, promptTokens - cacheHitTokens);
+            }
+            if (cacheHitTokens == null && cacheMissTokens != null && promptTokens != null) {
+                cacheHitTokens = Math.max(0, promptTokens - cacheMissTokens);
+            }
+            aiMessage.setPromptCacheHitTokens(cacheHitTokens);
+            aiMessage.setPromptCacheMissTokens(cacheMissTokens);
         }
     }
 

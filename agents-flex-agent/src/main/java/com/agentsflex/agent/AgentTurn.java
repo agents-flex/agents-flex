@@ -503,6 +503,20 @@ public final class AgentTurn {
     }
 
     /**
+     * @return 当前 Turn 累计缓存读取输入 Token
+     */
+    public long getCacheReadInputTokens() {
+        return state.getCacheReadInputTokens();
+    }
+
+    /**
+     * @return 当前 Turn 累计缓存未命中输入 Token
+     */
+    public long getCacheMissInputTokens() {
+        return state.getCacheMissInputTokens();
+    }
+
+    /**
      * @return 自动重试等延迟状态的最早可运行时间
      */
     public long getNextRunnableAt() {
@@ -707,7 +721,11 @@ public final class AgentTurn {
         long input = promptTokens == null ? 0 : promptTokens;
         long output = completionTokens == null ? 0 : completionTokens;
         long total = messageTotalTokens == null ? input + output : messageTotalTokens;
-        state.addUsage(input, output, total);
+        long cacheRead = message.getPromptCacheHitTokens() == null
+            ? 0 : Math.max(0, message.getPromptCacheHitTokens());
+        long cacheMiss = message.getPromptCacheMissTokens() == null
+            ? 0 : Math.max(0, message.getPromptCacheMissTokens());
+        state.addUsage(input, output, total, cacheRead, cacheMiss);
     }
 
     /**

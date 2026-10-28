@@ -87,6 +87,18 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
          * 按输入、输出类型记录 Token 用量的标准 GenAI Histogram。
          */
         private final DoubleHistogram tokenUsage;
+        /**
+         * 缓存读取输入 Token 累计数。
+         */
+        private final LongCounter cacheReadInputTokens;
+        /**
+         * 缓存未命中输入 Token 累计数。
+         */
+        private final LongCounter cacheMissInputTokens;
+        /**
+         * 按 full_hit / partial_hit / miss 记录可识别缓存结果的请求数。
+         */
+        private final LongCounter cacheRequestCount;
 
         private Instruments(ObservabilityRuntime runtime) {
             this.tracer = runtime.getTracer();
@@ -104,6 +116,17 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             this.tokenUsage = meter.histogramBuilder("gen_ai.client.token.usage")
                 .setDescription("Number of input and output tokens used by GenAI requests")
                 .setUnit("{token}")
+                .build();
+            this.cacheReadInputTokens = meter.counterBuilder("agentsflex.gen_ai.cache.read.input_tokens")
+                .setDescription("Number of input tokens read from the provider prompt cache")
+                .setUnit("{token}")
+                .build();
+            this.cacheMissInputTokens = meter.counterBuilder("agentsflex.gen_ai.cache.miss.input_tokens")
+                .setDescription("Number of input tokens not found in the provider prompt cache")
+                .setUnit("{token}")
+                .build();
+            this.cacheRequestCount = meter.counterBuilder("agentsflex.gen_ai.cache.request.count")
+                .setDescription("Number of GenAI requests reporting prompt cache usage")
                 .build();
         }
     }
@@ -272,6 +295,16 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
         if (outputTokens != null) {
             span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_OUTPUT_TOKENS, outputTokens.longValue());
         }
+        Integer cacheReadTokens = message.getPromptCacheHitTokens();
+        Integer cacheMissTokens = message.getPromptCacheMissTokens();
+        if (cacheReadTokens != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS,
+                cacheReadTokens.longValue());
+        }
+        if (cacheMissTokens != null) {
+            span.setAttribute(ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS,
+                cacheMissTokens.longValue());
+        }
         String finishReason = firstNonBlank(message.getFinishReason(), message.getStopReason());
         if (finishReason != null) {
             span.setAttribute(ObservabilityAttributeKeys.GEN_AI_RESPONSE_FINISH_REASONS,
@@ -346,6 +379,7 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             instruments.errorCount.add(1, attrs);
         }
         recordTokenUsage(instruments, provider, model, message);
+        recordCacheUsage(instruments, provider, model, message);
     }
 
     private static AttributesBuilder baseMetricAttributes(String provider, String model) {
@@ -369,6 +403,31 @@ public class ChatObservabilityInterceptor implements ChatInterceptor {
             instruments.tokenUsage.record(outputTokens.doubleValue(), baseMetricAttributes(provider, model)
                 .put(ObservabilityAttributeKeys.GEN_AI_TOKEN_TYPE, "output").build());
         }
+    }
+
+    private static void recordCacheUsage(Instruments instruments, String provider, String model, AiMessage message) {
+        if (message == null) {
+            return;
+        }
+        Integer cacheReadTokens = message.getPromptCacheHitTokens();
+        Integer cacheMissTokens = message.getPromptCacheMissTokens();
+        if (cacheReadTokens == null && cacheMissTokens == null) {
+            return;
+        }
+        long read = cacheReadTokens == null ? 0L : Math.max(0, cacheReadTokens.longValue());
+        long miss = cacheMissTokens == null ? 0L : Math.max(0, cacheMissTokens.longValue());
+        AttributesBuilder attributes = baseMetricAttributes(provider, model);
+        if (read > 0) {
+            instruments.cacheReadInputTokens.add(read, attributes.build());
+        }
+        if (miss > 0) {
+            instruments.cacheMissInputTokens.add(miss, attributes.build());
+        }
+        String outcome = read > 0 ? (miss > 0 ? "partial_hit" : "full_hit") : "miss";
+        instruments.cacheRequestCount.add(1,
+            baseMetricAttributes(provider, model)
+                .put(ObservabilityAttributeKeys.GEN_AI_CACHE_OUTCOME, outcome)
+                .build());
     }
 
     private static void recordError(Instruments instruments, Span span, Throwable error, String provider, String model,

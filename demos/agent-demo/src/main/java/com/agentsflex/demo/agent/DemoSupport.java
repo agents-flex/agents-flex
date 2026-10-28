@@ -12,7 +12,9 @@ import com.agentsflex.core.message.ToolCall;
 
 import java.util.Arrays;
 
-/** Demo 输出和运行结果校验工具。 */
+/**
+ * Demo 输出和运行结果校验工具。
+ */
 final class DemoSupport {
 
     private DemoSupport() {
@@ -37,6 +39,10 @@ final class DemoSupport {
         System.out.println("execution   : " + turn.getExecutionPoint());
         System.out.println("iterations  : " + turn.getIterationCount());
         System.out.println("toolCalls   : " + turn.getToolCallCount());
+        System.out.println("inputTokens : " + turn.getInputTokens());
+        System.out.println("outputTokens: " + turn.getOutputTokens());
+        System.out.println("cacheRead   : " + turn.getCacheReadInputTokens());
+        System.out.println("cacheMiss   : " + turn.getCacheMissInputTokens());
         System.out.println("finalOutput : " + turn.getFinalOutput());
     }
 

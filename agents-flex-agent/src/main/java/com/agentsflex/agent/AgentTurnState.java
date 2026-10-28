@@ -56,6 +56,8 @@ public final class AgentTurnState implements Serializable {
     private long inputTokens;
     private long outputTokens;
     private long totalTokens;
+    private long cacheReadInputTokens;
+    private long cacheMissInputTokens;
     private int toolCallCount;
     /**
      * 已发起但未得到有效模型响应的调用次数。
@@ -175,6 +177,8 @@ public final class AgentTurnState implements Serializable {
         this.inputTokens = source.inputTokens;
         this.outputTokens = source.outputTokens;
         this.totalTokens = source.totalTokens;
+        this.cacheReadInputTokens = source.cacheReadInputTokens;
+        this.cacheMissInputTokens = source.cacheMissInputTokens;
         this.toolCallCount = source.toolCallCount;
         this.modelInvocationFailureCount = source.modelInvocationFailureCount;
         this.retryCount = source.retryCount;
@@ -352,6 +356,20 @@ public final class AgentTurnState implements Serializable {
      */
     public long getTotalTokens() {
         return totalTokens;
+    }
+
+    /**
+     * @return 累计从模型供应商 Prompt Cache 读取的输入 Token
+     */
+    public long getCacheReadInputTokens() {
+        return cacheReadInputTokens;
+    }
+
+    /**
+     * @return 累计未命中模型供应商 Prompt Cache 的输入 Token
+     */
+    public long getCacheMissInputTokens() {
+        return cacheMissInputTokens;
     }
 
     /**
@@ -687,6 +705,16 @@ public final class AgentTurnState implements Serializable {
         totalTokens = value;
     }
 
+    void setCacheReadInputTokens(long value) {
+        requireMutable();
+        cacheReadInputTokens = value;
+    }
+
+    void setCacheMissInputTokens(long value) {
+        requireMutable();
+        cacheMissInputTokens = value;
+    }
+
     /**
      * 累加一次模型响应报告的 Token 用量。
      *
@@ -694,11 +722,13 @@ public final class AgentTurnState implements Serializable {
      * @param output 输出 Token 数
      * @param total  总 Token 数
      */
-    void addUsage(long input, long output, long total) {
+    void addUsage(long input, long output, long total, long cacheRead, long cacheMiss) {
         requireMutable();
         inputTokens += input;
         outputTokens += output;
         totalTokens += total;
+        cacheReadInputTokens += cacheRead;
+        cacheMissInputTokens += cacheMiss;
     }
 
     void setToolCallCount(int value) {
@@ -1169,6 +1199,16 @@ public final class AgentTurnState implements Serializable {
 
         public Builder totalTokens(long value) {
             state.setTotalTokens(value);
+            return this;
+        }
+
+        public Builder cacheReadInputTokens(long value) {
+            state.setCacheReadInputTokens(value);
+            return this;
+        }
+
+        public Builder cacheMissInputTokens(long value) {
+            state.setCacheMissInputTokens(value);
             return this;
         }
 

@@ -81,7 +81,9 @@ public class OpenTelemetryAgentEventListenerTest {
         String turn = "turn-1";
         listener.onEvent(event(turn, AgentEventType.TURN_STARTED, null));
         listener.onEvent(event(turn, AgentEventType.MODEL_STARTED, data("iteration", 1)));
-        listener.onEvent(event(turn, AgentEventType.MODEL_COMPLETED, data("iteration", 1)));
+        listener.onEvent(event(turn, AgentEventType.MODEL_COMPLETED, data("iteration", 1,
+            "inputTokens", 20, "outputTokens", 5,
+            "cacheReadInputTokens", 12, "cacheMissInputTokens", 8)));
         listener.onEvent(event(turn, AgentEventType.TOOL_STARTED, data("toolCallId", "t1", "toolName", "search")));
         listener.onEvent(event(turn, AgentEventType.TOOL_COMPLETED, data("toolCallId", "t1", "toolName", "search")));
         listener.onEvent(event(turn, AgentEventType.TURN_COMPLETED, null));
@@ -111,6 +113,8 @@ public class OpenTelemetryAgentEventListenerTest {
         // turn span 带 agentsflex.turn.id 属性。
         assertEquals(turn,
             turnSpan.getAttributes().get(io.opentelemetry.api.common.AttributeKey.stringKey("agentsflex.turn.id")));
+        assertEquals(Long.valueOf(12), modelSpan.getAttributes().get(
+            com.agentsflex.core.observability.ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS));
     }
 
     @Test
@@ -181,6 +185,26 @@ public class OpenTelemetryAgentEventListenerTest {
 
         Collection<MetricData> metrics = metricReader.collectAllMetrics();
         assertFalse(hasMetric(metrics, "agentsflex.agent.token.usage"));
+    }
+
+    @Test
+    public void shouldRecordModelAndTurnCacheUsage() {
+        String turn = "turn-7";
+        listener.onEvent(event(turn, AgentEventType.TURN_STARTED, null));
+        listener.onEvent(event(turn, AgentEventType.MODEL_STARTED, data("iteration", 1)));
+        listener.onEvent(event(turn, AgentEventType.MODEL_COMPLETED, data("iteration", 1,
+            "inputTokens", 100, "outputTokens", 20,
+            "cacheReadInputTokens", 75, "cacheMissInputTokens", 25)));
+        listener.onEvent(event(turn, AgentEventType.TURN_COMPLETED, data(
+            "inputTokens", 100, "outputTokens", 20, "totalTokens", 120,
+            "cacheReadInputTokens", 75, "cacheMissInputTokens", 25)));
+
+        SpanData turnSpan = findSpan(spanExporter.getFinishedSpanItems(), "agent.turn");
+        assertEquals(Long.valueOf(75), turnSpan.getAttributes().get(
+            com.agentsflex.core.observability.ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS));
+        assertEquals(Long.valueOf(25), turnSpan.getAttributes().get(
+            com.agentsflex.core.observability.ObservabilityAttributeKeys.GEN_AI_USAGE_CACHE_MISS_INPUT_TOKENS));
+        assertTrue(hasMetric(metricReader.collectAllMetrics(), "agentsflex.agent.token.usage"));
     }
 
     private static boolean hasMetric(Collection<MetricData> metrics, String name) {

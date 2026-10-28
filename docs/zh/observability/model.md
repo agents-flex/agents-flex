@@ -67,6 +67,8 @@ agentsflex.otel.enabled=true
 | `gen_ai.request.stop_sequences` | ChatOptions 已设置且非空 | 停止序列数组 |
 | `gen_ai.usage.input_tokens` | 可取得 Usage | 输入 Token；优先服务端值，缺失时使用本地统计 |
 | `gen_ai.usage.output_tokens` | 可取得 Usage | 输出 Token；优先服务端值，缺失时使用本地统计 |
+| `gen_ai.usage.cache_read.input_tokens` | 服务端报告缓存用量 | 从模型供应商 Prompt Cache 读取的输入 Token |
+| `gen_ai.usage.cache_miss.input_tokens` | 服务端报告缓存用量 | 未命中模型供应商 Prompt Cache 的输入 Token |
 | `gen_ai.response.finish_reasons` | 模型返回结束原因 | 例如 `stop`、`length`、`tool_calls` |
 | `agentsflex.bot.id` | ChatOptions 已设置 | 宿主系统业务 Bot ID |
 | `gen_ai.conversation.id` | ChatOptions 已设置 | 会话关联 ID |
@@ -91,6 +93,9 @@ agentsflex.otel.enabled=true
 | `agentsflex.gen_ai.request.count` | Counter | 次 | 模型请求总数，Agents-Flex 扩展指标 |
 | `gen_ai.client.operation.duration` | Histogram | 秒 | 同步或完整流式请求耗时 |
 | `gen_ai.client.token.usage` | Histogram | Token | 输入或输出 Token 用量 |
+| `agentsflex.gen_ai.cache.read.input_tokens` | Counter | Token | 从 Prompt Cache 读取的输入 Token 累计数 |
+| `agentsflex.gen_ai.cache.miss.input_tokens` | Counter | Token | 未命中 Prompt Cache 的输入 Token 累计数 |
+| `agentsflex.gen_ai.cache.request.count` | Counter | 次 | 可识别缓存结果的模型请求数 |
 | `agentsflex.gen_ai.request.error.count` | Counter | 次 | 失败请求数，Agents-Flex 扩展指标 |
 
 Metrics 属性包括：
@@ -99,10 +104,31 @@ Metrics 属性包括：
 - `gen_ai.request.model`
 - `gen_ai.operation.name`
 - `gen_ai.token.type`，仅 Token 指标存在，值为 `input` 或 `output`
+- `agentsflex.cache.outcome`，仅缓存请求指标存在，值为 `full_hit`、`partial_hit` 或 `miss`
 - `error.type`，仅失败请求存在
 
 bot、conversation、account、turn 和任意用户 ID 不进入内置 Metrics，避免时间序列基数快速增长。这些
 关联信息只保留在 Span 中。
+
+### Prompt Cache 用量
+
+Agents-Flex 优先读取 DeepSeek 风格的 `usage.prompt_cache_hit_tokens` 和
+`usage.prompt_cache_miss_tokens`。如果供应商只返回 OpenAI 风格的
+`usage.prompt_tokens_details.cached_tokens`，则将其作为 cache read，并用服务端报告的
+`prompt_tokens - cached_tokens` 计算 cache miss。只有服务端明确返回缓存字段时才记录缓存指标，
+不会使用本地 Token 估算值推断缓存命中。
+
+按 Token 计算的缓存命中率为：
+
+```text
+cache_read / (cache_read + cache_miss)
+```
+
+`full_hit` 表示 read 大于 0 且 miss 为 0，`partial_hit` 表示 read 和 miss 都大于 0，
+`miss` 表示 read 为 0。供应商缓存通常是尽力命中机制，因此重复请求也不保证一定产生缓存读取。
+Agent Turn 会累计所有模型调用的 cache read/miss Token，并通过 Turn 快照、终态事件和
+`agent.turn` Span 暴露；`agentsflex.agent.token.usage` 还会用
+`gen_ai.token.type=cache_read|cache_miss` 记录每次模型调用的 Agent 侧用量。
 
 ### 如何结合 Span 和 Metric 判断问题
 

@@ -32,7 +32,8 @@ public class DefaultAiMessageParserTest {
         "  }],\n" +
         "  \"usage\": {\n" +
         "    \"prompt_tokens\": 19, \"completion_tokens\": 10, \"total_tokens\": 29,\n" +
-        "    \"prompt_tokens_details\": {\"cached_tokens\": 0, \"audio_tokens\": 0},\n" +
+        "    \"prompt_cache_hit_tokens\": 7, \"prompt_cache_miss_tokens\": 12,\n" +
+        "    \"prompt_tokens_details\": {\"cached_tokens\": 7, \"audio_tokens\": 0},\n" +
         "    \"completion_tokens_details\": {\"reasoning_tokens\": 0, \"audio_tokens\": 0,\n" +
         "      \"accepted_prediction_tokens\": 0, \"rejected_prediction_tokens\": 0}\n" +
         "  },\n" +
@@ -63,7 +64,9 @@ public class DefaultAiMessageParserTest {
         Map<?, ?> annotation = (Map<?, ?>) message.getAnnotations().get(0);
         assertEquals("url_citation", annotation.get("type"));
         assertEquals("Hello", ((Map<?, ?>) ((List<?>) message.getLogprobs().get("content")).get(0)).get("token"));
-        assertEquals(0, ((Number) message.getPromptTokensDetails().get("cached_tokens")).intValue());
+        assertEquals(7, ((Number) message.getPromptTokensDetails().get("cached_tokens")).intValue());
+        assertEquals(Integer.valueOf(7), message.getPromptCacheHitTokens());
+        assertEquals(Integer.valueOf(12), message.getPromptCacheMissTokens());
         assertEquals(0, ((Number) message.getCompletionTokensDetails().get("reasoning_tokens")).intValue());
         assertEquals(0, ((Number) message.getCompletionTokensDetails().get("accepted_prediction_tokens")).intValue());
     }
@@ -108,6 +111,22 @@ public class DefaultAiMessageParserTest {
         assertEquals(parsed.getLogprobs(), restored.getLogprobs());
         assertEquals(parsed.getPromptTokensDetails(), restored.getPromptTokensDetails());
         assertEquals(parsed.getCompletionTokensDetails(), restored.getCompletionTokensDetails());
+        assertEquals(parsed.getPromptCacheHitTokens(), restored.getPromptCacheHitTokens());
+        assertEquals(parsed.getPromptCacheMissTokens(), restored.getPromptCacheMissTokens());
+    }
+
+    @Test
+    public void derivesCacheMissTokensFromCachedTokenDetails() {
+        JSONObject response = JSON.parseObject(RESPONSE);
+        JSONObject usage = response.getJSONObject("usage");
+        usage.remove("prompt_cache_hit_tokens");
+        usage.remove("prompt_cache_miss_tokens");
+
+        AiMessage message = DefaultAiMessageParser.getOpenAIMessageParser()
+            .parse(response, context(false));
+
+        assertEquals(Integer.valueOf(7), message.getPromptCacheHitTokens());
+        assertEquals(Integer.valueOf(12), message.getPromptCacheMissTokens());
     }
 
     private static JSONObject streamChunk(String content, String role, String token) {
