@@ -3,6 +3,7 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.store.AgentStoreSerializer;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
 import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
+import com.agentsflex.agent.context.AgentContextUsageStateStore;
 
 import javax.sql.DataSource;
 import java.util.Objects;
@@ -56,6 +57,13 @@ public final class JdbcAgentStoreConfig {
      */
     public AgentContextCompressionStateStore compressionStateStore() {
         return new JdbcAgentContextCompressionStateStore(this);
+    }
+
+    /**
+     * 创建使用同一 DataSource、表前缀和序列化器的服务端 Usage 状态 Store。
+     */
+    public AgentContextUsageStateStore usageStateStore() {
+        return new JdbcAgentContextUsageStateStore(this);
     }
 
     public static final class Builder {

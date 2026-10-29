@@ -50,6 +50,10 @@ public enum AgentEventType {
      */
     MODEL_COMPLETED,
     /**
+     * 服务端确认的 Usage 已达到阈值；Runner 将在下一次真实模型调用前尝试压缩。
+     */
+    CONTEXT_COMPRESSION_REQUIRED,
+    /**
      * Runner 已确认当前 Turn 需要上下文压缩，并即将生成摘要。
      */
     CONTEXT_COMPRESSION_STARTED,

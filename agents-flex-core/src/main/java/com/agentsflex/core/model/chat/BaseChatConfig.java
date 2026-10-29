@@ -44,6 +44,15 @@ public class BaseChatConfig extends BaseModelConfig {
     protected ThinkingProtocol thinkingProtocolHandler;
     protected boolean logEnabled = true;
 
+    /**
+     * 模型输入与输出合计的上下文容量；0 表示未知，不用于本地 Token 估算。
+     */
+    protected long contextWindowTokens;
+    /**
+     * 模型允许的最大输出 Token；0 表示未知。
+     */
+    protected long maxOutputTokens;
+
 
     protected boolean retryEnabled = true; // 默认开启错误重试
     protected int retryCount = 3;
@@ -52,6 +61,58 @@ public class BaseChatConfig extends BaseModelConfig {
 
     public boolean isLogEnabled() {
         return logEnabled;
+    }
+
+    /**
+     * @return 模型总上下文容量；0 表示未知
+     */
+    public long getContextWindowTokens() {
+        return contextWindowTokens;
+    }
+
+    /**
+     * 设置模型总上下文容量。
+     *
+     * @param contextWindowTokens 输入与输出合计容量；0 表示未知
+     */
+    public void setContextWindowTokens(long contextWindowTokens) {
+        if (contextWindowTokens < 0) {
+            throw new IllegalArgumentException("contextWindowTokens must not be negative");
+        }
+        this.contextWindowTokens = contextWindowTokens;
+    }
+
+    /**
+     * @return 模型最大输出 Token；0 表示未知
+     */
+    public long getMaxOutputTokens() {
+        return maxOutputTokens;
+    }
+
+    /**
+     * 设置模型最大输出 Token。该值可作为计算可用输入容量时的默认预留量。
+     *
+     * @param maxOutputTokens 最大输出 Token；0 表示未知
+     */
+    public void setMaxOutputTokens(long maxOutputTokens) {
+        if (maxOutputTokens < 0) {
+            throw new IllegalArgumentException("maxOutputTokens must not be negative");
+        }
+        this.maxOutputTokens = maxOutputTokens;
+    }
+
+    /**
+     * 将配置转换为上下文管理使用的不可变模型能力对象。
+     *
+     * <p>模型标识优先使用 {@code provider:model}，未配置 provider 时退化为 model。</p>
+     *
+     * @return 当前配置对应的稳定模型能力
+     */
+    public ChatModelCapabilities toCapabilities() {
+        String modelKey = null;
+        if (provider != null && model != null) modelKey = provider + ":" + model;
+        else if (model != null) modelKey = model;
+        return new ChatModelCapabilities(modelKey, contextWindowTokens, maxOutputTokens);
     }
 
     public void setLogEnabled(boolean logEnabled) {
@@ -206,7 +267,9 @@ public class BaseChatConfig extends BaseModelConfig {
         this.thinkingEnabled = thinkingEnabled;
     }
 
-    /** 按字段继承：Options 显式值 > Config 默认值 > 服务端默认。 */
+    /**
+     * 按字段继承：Options 显式值 > Config 默认值 > 服务端默认。
+     */
     public Boolean resolveThinkingEnabled(ChatOptions options) {
         return options != null && options.getThinkingEnabled() != null
             ? options.getThinkingEnabled() : thinkingEnabled;
@@ -216,7 +279,9 @@ public class BaseChatConfig extends BaseModelConfig {
         return thinkingProtocolHandler != null ? thinkingProtocolHandler : ThinkingProtocols.resolve(thinkingProtocol);
     }
 
-    /** 自定义网关协议无需替换整个请求 Builder。 */
+    /**
+     * 自定义网关协议无需替换整个请求 Builder。
+     */
     public void setThinkingProtocolHandler(ThinkingProtocol handler) {
         this.thinkingProtocolHandler = handler;
     }
@@ -284,6 +349,8 @@ public class BaseChatConfig extends BaseModelConfig {
             ", thinkingEnabled=" + thinkingEnabled +
             ", thinkingProtocol='" + thinkingProtocol + '\'' +
             ", logEnabled=" + logEnabled +
+            ", contextWindowTokens=" + contextWindowTokens +
+            ", maxOutputTokens=" + maxOutputTokens +
             ", retryEnabled=" + retryEnabled +
             ", retryCount=" + retryCount +
             ", retryInitialDelayMs=" + retryInitialDelayMs +

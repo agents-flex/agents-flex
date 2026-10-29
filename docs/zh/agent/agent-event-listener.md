@@ -185,11 +185,25 @@ runner.addEventListener(event -> {
 | 外部工具 | `EXTERNAL_TOOL_REQUESTED`、`EXTERNAL_TOOL_COMPLETED`、`EXTERNAL_TOOL_FAILED`、`EXTERNAL_TOOL_CANCEL_REQUESTED` | 工具交给外部系统执行或请求协作式取消 |
 | 工具中断 | `TOOL_INTERRUPTED` | pending ToolCall 已闭合，并保存了用户消息中断记录 |
 | 重试与限制 | `RETRY_SCHEDULED`、`BUDGET_EXCEEDED`、`MAX_ITERATIONS_REACHED`、`MAX_STEPS_REACHED` | 等待重试或达到运行限制 |
-| 上下文压缩 | `CONTEXT_COMPRESSION_STARTED`、`CONTEXT_COMPRESSION_COMPLETED`、`CONTEXT_COMPRESSION_FAILED` | 长对话压缩过程 |
+| 上下文压缩 | `CONTEXT_COMPRESSION_REQUIRED`、`CONTEXT_COMPRESSION_STARTED`、`CONTEXT_COMPRESSION_COMPLETED`、`CONTEXT_COMPRESSION_FAILED` | 长对话达到阈值及压缩过程 |
 | 任务保存 | `SNAPSHOT_SAVED` | 最新任务进度已经保存 |
 
 `SNAPSHOT_SAVED` 只表示某次进度保存成功，不代表整个任务已经完成。判断任务正常完成应监听
 `TURN_COMPLETED`，或者查询 `AgentTurn` 的状态。
+
+启用服务端 Usage 上下文策略后，`MODEL_COMPLETED` 还会携带本次服务端 `inputTokens`、`outputTokens`、
+`totalTokens`，以及 `usageSource`、`modelKey`、
+`contextWindowTokens`、`modelMaxOutputTokens`、`reservedOutputTokens`、`nextCallBaselineTokens`、
+`baselineRatio`、`remainingBaselineTokens`、`compressionRequired`、`usageBaselineValid` 和 `usageStatus`。只有
+`usageSource == PROVIDER_CONFIRMED` 且 `usageStatus == CONFIRMED_BASELINE` 时，页面才应把比例和剩余量显示为
+当前上下文的已确认数据；没有服务端 Usage 时 `usageSource` 为 `UNAVAILABLE`。压缩后旧基准会失效，等待下一次
+成功调用重新确认。达到阈值时还会发布 `CONTEXT_COMPRESSION_REQUIRED`，表示压缩将在下一次模型调用前执行。
+这些上下文字段不会回退到本地 Token 统计。`TURN_COMPLETED` 等既有生命周期事件中的累计预算字段保持原有
+语义，不应当作本功能的服务端确认上下文基准。
+由 Usage 阈值或上下文超限触发的 `CONTEXT_COMPRESSION_COMPLETED` 会立即携带
+`usageStatus == BASELINE_INVALIDATED`、`compressionRequired == false` 和 `usageBaselineValid == false`，
+并通过 `compressionReason` 表示阈值、异常恢复或策略触发，因此即使后续重试尚未完成或失败，页面也应立刻
+停止展示旧的比例和剩余 Token。
 
 `EXTERNAL_TOOL_CANCEL_REQUESTED` 在中断 Snapshot 保存成功后发布。监听器应把它视为“尽力取消”请求，
 不能假定外部副作用一定已经撤回；外部工具仍需要使用幂等键，并在回传结果前核对当前 correlationId。

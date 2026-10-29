@@ -7,6 +7,7 @@
 package com.agentsflex.agent;
 
 import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
+import com.agentsflex.agent.context.AgentContextUsagePolicy;
 import com.agentsflex.agent.middleware.AgentMiddleware;
 import com.agentsflex.agent.tool.AgentToolResolver;
 import com.agentsflex.agent.tool.ToolApprovalPolicy;
@@ -128,6 +129,10 @@ public final class Agent {
      */
     private final AgentContextCompressionPolicy compressionPolicy;
     /**
+     * 基于供应商确认 Usage 的上下文阈值、输出预留和超限恢复配置。
+     */
+    private final AgentContextUsagePolicy contextUsagePolicy;
+    /**
      * 包装步骤、模型调用和工具调用的中间件。
      */
     private final List<AgentMiddleware> middlewares;
@@ -173,6 +178,7 @@ public final class Agent {
         this.maxAttachedMessages = builder.maxAttachedMessages;
         this.maxAttachedTurns = builder.maxAttachedTurns;
         this.compressionPolicy = builder.compressionPolicy;
+        this.contextUsagePolicy = builder.contextUsagePolicy;
         this.middlewares = Collections.unmodifiableList(new ArrayList<>(builder.middlewares));
         List<AgentToolResolver> resolvers = new ArrayList<>();
         for (AgentMiddleware middleware : this.middlewares) {
@@ -364,6 +370,13 @@ public final class Agent {
     }
 
     /**
+     * @return 当前 Agent 的服务端 Usage 与 Token 上限恢复策略
+     */
+    public AgentContextUsagePolicy getContextUsagePolicy() {
+        return contextUsagePolicy;
+    }
+
+    /**
      * @return 按注册顺序执行的只读 Middleware 列表
      */
     public List<AgentMiddleware> getMiddlewares() {
@@ -405,6 +418,10 @@ public final class Agent {
         private int maxAttachedMessages = 100;
         private int maxAttachedTurns = 10;
         private AgentContextCompressionPolicy compressionPolicy = AgentContextCompressionPolicy.defaults();
+        /**
+         * 默认关闭，保证未显式配置的 Agent 不引入额外状态存储或压缩行为。
+         */
+        private AgentContextUsagePolicy contextUsagePolicy = AgentContextUsagePolicy.disabled();
         private final List<AgentMiddleware> middlewares = new ArrayList<>();
         private final Map<String, Object> attributes = new HashMap<>();
 
@@ -609,6 +626,17 @@ public final class Agent {
         }
 
         /**
+         * 设置基于服务端 Usage 的上下文阈值和 Token 上限恢复行为。
+         *
+         * <p>传入 {@code null} 时恢复为关闭策略。启用后必须同时配置持久化压缩策略，
+         * 因为阈值或异常恢复需要在不删除完整 ChatMemory 的前提下持久化摘要视图。</p>
+         */
+        public Builder contextUsagePolicy(AgentContextUsagePolicy value) {
+            this.contextUsagePolicy = value == null ? AgentContextUsagePolicy.disabled() : value;
+            return this;
+        }
+
+        /**
          * 添加一个 Agent 运行时中间件。
          */
         public Builder middleware(AgentMiddleware middleware) {
@@ -676,6 +704,11 @@ public final class Agent {
             }
             if (toolApprovalPolicy == null) {
                 toolApprovalPolicy = ToolApprovalPolicy.allowAll();
+            }
+            if (contextUsagePolicy.isEnabled() && !compressionPolicy.isIncremental()) {
+                // Usage 触发压缩必须能够保存摘要游标，否则下次请求无法恢复一致的模型视图。
+                throw new IllegalStateException(
+                    "enabled contextUsagePolicy requires a persistent compressionPolicy");
             }
             List<Tool> effectiveTools = effectiveTools();
             validateUniqueToolNames(effectiveTools);

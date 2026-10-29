@@ -9,6 +9,9 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.event.AgentEvent;
 import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
+import com.agentsflex.agent.context.AgentContextUsagePolicy;
+import com.agentsflex.agent.context.AgentContextUsageState;
+import com.agentsflex.core.model.chat.ChatModelCapabilities;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.tool.AgentFormDefinition;
@@ -104,27 +107,85 @@ final class AgentEventPublisher {
     }
 
     /**
-     * 发布模型调用完成事件，并标识响应是否包含工具调用。
+     * 发布模型调用完成事件，并附带服务端 Usage、模型容量和下一次调用基准。
      *
-     * @param turn     当前 Turn
-     * @param response 模型响应；允许为空以记录不完整调用
+     * <p>input/output/total 只读取供应商 Usage 字段，不回退到本地 Token 统计。只有基准状态为
+     * {@code CONFIRMED_BASELINE} 且模型容量已知时，才输出 baselineRatio 和
+     * remainingBaselineTokens；基准失效后保留审计数值但隐藏比例，避免 UI 展示过期信息。</p>
+     *
+     * @param turn                 当前 Turn
+     * @param response             模型响应；允许为空以记录不完整调用
+     * @param capabilities         实际调用模型的稳定容量能力
+     * @param policy               当前 Agent 的 Usage 策略
+     * @param usageState           本次响应更新后的 Usage 状态；无法建立状态时为空
+     * @param reservedOutputTokens 本次比例计算使用的输出预留 Token
      */
-    void notifyModelEnd(AgentTurn turn, AiMessageResponse response) {
+    void notifyModelEnd(AgentTurn turn, AiMessageResponse response,
+                        ChatModelCapabilities capabilities,
+                        AgentContextUsagePolicy policy,
+                        AgentContextUsageState usageState,
+                        long reservedOutputTokens) {
         Map<String, Object> values = iterationAttributes(turn);
         AiMessage message = response == null ? null : response.getMessage();
+        // total 存在，或 input/output 同时存在，才视为完整供应商 Usage。
+        boolean providerUsageAvailable = message != null
+            && (message.getTotalTokens() != null
+            || (message.getPromptTokens() != null && message.getCompletionTokens() != null));
         values.put("hasToolCalls",
             message != null && message.hasToolCalls());
         if (message != null) {
-            Integer inputTokens = message.getPromptTokens() != null
-                ? message.getPromptTokens() : message.getLocalPromptTokens();
-            Integer outputTokens = message.getCompletionTokens() != null
-                ? message.getCompletionTokens() : message.getLocalCompletionTokens();
+            Integer inputTokens = message.getPromptTokens();
+            Integer outputTokens = message.getCompletionTokens();
             values.putAll(attributes("inputTokens", inputTokens,
                 "outputTokens", outputTokens,
+                "totalTokens", message.getTotalTokens(),
                 "cacheReadInputTokens", message.getPromptCacheHitTokens(),
                 "cacheMissInputTokens", message.getPromptCacheMissTokens()));
         }
+        if (capabilities != null) {
+            values.putAll(attributes("modelKey", capabilities.getModelKey(),
+                "contextWindowTokens", capabilities.getContextWindowTokens(),
+                "modelMaxOutputTokens", capabilities.getMaxOutputTokens()));
+        }
+        if (policy != null && policy.isEnabled()) {
+            values.put("reservedOutputTokens", reservedOutputTokens);
+        }
+        values.put("usageSource", providerUsageAvailable ? "PROVIDER_CONFIRMED" : "UNAVAILABLE");
+        if (usageState != null) {
+            values.putAll(attributes("usageStatus", usageState.getStatus(),
+                "nextCallBaselineTokens", usageState.getNextCallBaselineTokens(),
+                "compressionRequired", usageState.isCompressionRequired(),
+                "usageBaselineValid", usageState.getStatus()
+                    == com.agentsflex.agent.context.AgentContextUsageStatus.CONFIRMED_BASELINE));
+            long usable = capabilities == null ? 0 : capabilities.getContextWindowTokens()
+                - reservedOutputTokens;
+            // 基准失效时不输出比例与剩余量；历史 Token 仅可用于审计，不能代表当前模型视图。
+            if (usageState.getStatus()
+                == com.agentsflex.agent.context.AgentContextUsageStatus.CONFIRMED_BASELINE
+                && usable > 0) {
+                values.put("baselineRatio",
+                    (double) usageState.getNextCallBaselineTokens() / (double) usable);
+                values.put("remainingBaselineTokens",
+                    Math.max(0, usable - usageState.getNextCallBaselineTokens()));
+            }
+        }
         publish(turn, AgentEventType.MODEL_COMPLETED, values);
+    }
+
+    /**
+     * 发布“下一次真实模型调用前需要压缩”的通知。
+     *
+     * <p>事件不表示压缩已经发生；{@code compressionBeforeNextCall=true} 明确了延迟执行语义。</p>
+     */
+    void notifyContextCompressionRequired(AgentTurn turn, AgentContextUsageState state,
+                                          double thresholdRatio) {
+        if (state == null || !state.isCompressionRequired()) return;
+        publish(turn, AgentEventType.CONTEXT_COMPRESSION_REQUIRED,
+            attributes("reason", state.getCompressionReason(),
+                "usageStatus", state.getStatus(),
+                "nextCallBaselineTokens", state.getNextCallBaselineTokens(),
+                "thresholdRatio", thresholdRatio,
+                "compressionBeforeNextCall", true));
     }
 
     void notifyContextCompressionStarted(AgentTurn turn, int historyMessageCount,
@@ -134,10 +195,34 @@ final class AgentEventPublisher {
                 "pendingMessageCount", pendingMessageCount));
     }
 
+    /**
+     * 发布不附带 Usage 状态的压缩完成事件，供旧自动压缩入口复用。
+     */
     void notifyContextCompressionCompleted(AgentTurn turn,
                                            AgentContextCompressionResult result) {
+        notifyContextCompressionCompleted(turn, result, null);
+    }
+
+    /**
+     * 发布压缩完成事件，并在 Usage 策略参与时附带基准失效结果。
+     *
+     * <p>压缩改变模型可见历史后，事件中的 {@code usageBaselineValid} 应为 false，前端应等待
+     * 下一次成功且带完整 Usage 的模型响应重新建立确认基准。</p>
+     */
+    void notifyContextCompressionCompleted(AgentTurn turn,
+                                           AgentContextCompressionResult result,
+                                           AgentContextUsageState usageState) {
+        Map<String, Object> values = compressionAttributes(result);
+        if (usageState != null) {
+            values.putAll(attributes("usageStatus", usageState.getStatus(),
+                "compressionRequired", usageState.isCompressionRequired(),
+                "compressionReason", usageState.getCompressionReason(),
+                "usageBaselineValid",
+                usageState.getStatus()
+                    == com.agentsflex.agent.context.AgentContextUsageStatus.CONFIRMED_BASELINE));
+        }
         publish(turn, AgentEventType.CONTEXT_COMPRESSION_COMPLETED,
-            compressionAttributes(result));
+            values);
     }
 
     void notifyContextCompressionFailed(AgentTurn turn, Throwable error) {

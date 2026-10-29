@@ -14,14 +14,36 @@ import java.util.function.ToLongFunction;
  * <p>它只处理已传入的较早历史，不修改 ChatMemory。压缩失败或 CAS 冲突时不会覆盖旧摘要。</p>
  */
 final class AgentContextCompressionProcessor {
+    /**
+     * 按会话保存摘要、游标和版本的 CAS Store。
+     */
     private final AgentContextCompressionStateStore store;
+    /**
+     * 自动模式下判断 pending 是否需要压缩；手动持久化模式下为空。
+     */
     private final AgentContextCompressionDecider decider;
+    /**
+     * 把旧摘要和新增历史重新归纳为新摘要的实现。
+     */
     private final AgentContextCompressor compressor;
+    /**
+     * 自动模式的 Token 估算函数；只与 decider 配对使用。
+     */
     private final ToLongFunction<List<Message>> tokenEstimator;
+    /**
+     * 压缩器失败时的处理策略，不影响游标校验和 CAS 冲突。
+     */
     private final AgentCompressionFailureStrategy compressionFailureStrategy;
 
     /**
-     * 创建增量压缩处理器，并要求状态存储、决策器、压缩器和 Token 估算器全部可用。
+     * @return 是否配置了自动决策所需的 decider 和 tokenEstimator
+     */
+    boolean isAutomatic() {
+        return decider != null && tokenEstimator != null;
+    }
+
+    /**
+     * 创建自动增量压缩处理器。
      *
      * @param store          按会话持久化压缩游标和摘要的 CAS Store
      * @param decider        判断当前增量是否值得压缩的决策器
@@ -46,8 +68,9 @@ final class AgentContextCompressionProcessor {
                                      AgentContextCompressor compressor,
                                      ToLongFunction<List<Message>> tokenEstimator,
                                      AgentCompressionFailureStrategy compressionFailureStrategy) {
-        if (store == null || decider == null || compressor == null || tokenEstimator == null) {
-            throw new IllegalArgumentException("compression processor dependencies must not be null");
+        if (store == null || compressor == null || (decider == null) != (tokenEstimator == null)) {
+            throw new IllegalArgumentException(
+                "compression processor requires store and compressor; decider and tokenEstimator must be configured together");
         }
         this.store = store;
         this.decider = decider;
@@ -78,6 +101,9 @@ final class AgentContextCompressionProcessor {
     AgentContextCompressionResult process(String conversationId,
                                           List<Message> chronologicalMessages,
                                           Runnable onCompressionStarted) {
+        if (decider == null || tokenEstimator == null) {
+            throw new IllegalStateException("automatic compression is not configured");
+        }
         if (conversationId == null || conversationId.trim().isEmpty() || chronologicalMessages == null) {
             throw new IllegalArgumentException("conversationId must not be blank and messages must not be null");
         }
@@ -86,6 +112,7 @@ final class AgentContextCompressionProcessor {
                 throw new IllegalArgumentException("chronological history must not contain null messages");
             }
         }
+        // 状态中的 coveredUntilMessageId 是持久化游标，用于保证每条历史只进入摘要一次。
         AgentContextCompressionState state = store.load(conversationId);
         if (state == null) state = AgentContextCompressionState.empty();
         List<Message> pending = pendingAfter(state.getCoveredUntilMessageId(), chronologicalMessages);
@@ -97,11 +124,60 @@ final class AgentContextCompressionProcessor {
         AgentContextCompressionInput input = new AgentContextCompressionInput(
             pending, state.getSummaryMessages(), estimatedTokens, pendingTurnCount, state);
         if (pending.isEmpty() || !decider.shouldCompress(input)) {
+            // 未达到条件时仍返回“旧摘要 + 未覆盖消息”的完整模型视图。
             List<Message> modelMessages = new ArrayList<>(state.getSummaryMessages());
             modelMessages.addAll(pending);
             return new AgentContextCompressionResult(false, state, modelMessages);
         }
 
+        if (onCompressionStarted != null) onCompressionStarted.run();
+        // 新摘要必须同时吸收旧摘要和本轮新增历史，避免多次增量压缩丢失早期信息。
+        List<Message> compressorInput = new ArrayList<>(state.getSummaryMessages());
+        compressorInput.addAll(pending);
+        List<Message> summary;
+        try {
+            summary = compressor.compress(Collections.unmodifiableList(copyMessages(compressorInput)));
+            AgentContextCompressionValidator.validate(summary, true);
+        } catch (RuntimeException error) {
+            if (compressionFailureStrategy == AgentCompressionFailureStrategy.USE_ORIGINAL) {
+                return originalResult(state, pending);
+            }
+            throw error;
+        }
+        Message last = pending.get(pending.size() - 1);
+        // 游标推进到最后一条 pending；只有 CAS 保存成功后，新摘要才正式生效。
+        AgentContextCompressionState next = new AgentContextCompressionState(
+            state.getVersion() + 1, summary, last.getMessageId());
+        if (!store.save(conversationId, next, state.getVersion())) {
+            throw new IllegalStateException("compression state changed concurrently");
+        }
+        return new AgentContextCompressionResult(true, next, summary);
+    }
+
+    /**
+     * 强制执行一次增量压缩，不咨询决策器，也不调用 Token 估算器。
+     *
+     * <p>服务端 Usage 达阈值和上下文超限恢复使用该路径，因此即使没有配置旧本地估算器，
+     * 只要存在 stateStore + compressor 也能工作。</p>
+     */
+    AgentContextCompressionResult force(String conversationId,
+                                        List<Message> chronologicalMessages,
+                                        Runnable onCompressionStarted) {
+        if (conversationId == null || conversationId.trim().isEmpty() || chronologicalMessages == null) {
+            throw new IllegalArgumentException("conversationId must not be blank and messages must not be null");
+        }
+        for (Message message : chronologicalMessages) {
+            if (message == null) {
+                throw new IllegalArgumentException("chronological history must not contain null messages");
+            }
+        }
+        AgentContextCompressionState state = store.load(conversationId);
+        if (state == null) state = AgentContextCompressionState.empty();
+        List<Message> pending = pendingAfter(state.getCoveredUntilMessageId(), chronologicalMessages);
+        if (pending.isEmpty()) {
+            // 没有新增历史时不能产生新的摘要版本，调用方也不应进行无意义重试。
+            return new AgentContextCompressionResult(false, state, state.getSummaryMessages());
+        }
         if (onCompressionStarted != null) onCompressionStarted.run();
         List<Message> compressorInput = new ArrayList<>(state.getSummaryMessages());
         compressorInput.addAll(pending);
@@ -125,6 +201,24 @@ final class AgentContextCompressionProcessor {
     }
 
     /**
+     * 恢复持久化摘要视图，不执行压缩或状态写入。
+     *
+     * @return {@code modelMessages} 为“已保存摘要 + 游标之后原始消息”的有序组合
+     */
+    AgentContextCompressionResult loadView(String conversationId,
+                                           List<Message> chronologicalMessages) {
+        if (conversationId == null || conversationId.trim().isEmpty() || chronologicalMessages == null) {
+            throw new IllegalArgumentException("conversationId must not be blank and messages must not be null");
+        }
+        AgentContextCompressionState state = store.load(conversationId);
+        if (state == null) state = AgentContextCompressionState.empty();
+        List<Message> pending = pendingAfter(state.getCoveredUntilMessageId(), chronologicalMessages);
+        List<Message> modelMessages = new ArrayList<>(state.getSummaryMessages());
+        modelMessages.addAll(pending);
+        return new AgentContextCompressionResult(false, state, modelMessages);
+    }
+
+    /**
      * 压缩器失败时保留旧状态和完整 pending，保证下一次调用仍可重试同一批消息。
      */
     private static AgentContextCompressionResult originalResult(AgentContextCompressionState state,
@@ -134,6 +228,9 @@ final class AgentContextCompressionProcessor {
         return new AgentContextCompressionResult(false, state, modelMessages);
     }
 
+    /**
+     * 深拷贝消息列表，防止压缩器修改 Runner 持有的历史对象。
+     */
     private static List<Message> copyMessages(List<Message> messages) {
         List<Message> copies = new ArrayList<>(messages.size());
         for (Message message : messages) {

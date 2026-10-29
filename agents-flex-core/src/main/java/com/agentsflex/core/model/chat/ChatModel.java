@@ -23,6 +23,18 @@ import com.agentsflex.core.util.StringUtil;
 
 public interface ChatModel {
 
+    /**
+     * 返回模型稳定的上下文容量能力。
+     *
+     * <p>自定义模型若无法提供容量上限，可以保留默认的未知值。该方法不返回单次请求 Usage，
+     * 也不会触发任何本地 Token 计算。</p>
+     *
+     * @return 模型能力描述，默认所有容量均未知
+     */
+    default ChatModelCapabilities getCapabilities() {
+        return ChatModelCapabilities.unknown();
+    }
+
     default String chat(String prompt) {
         return chat(prompt, new ChatOptions());
     }

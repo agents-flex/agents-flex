@@ -69,6 +69,25 @@ final class AgentModelInvoker {
         // Turn 级参数已经在 requestOptions 中复制；模型选择也基于裁剪后的最终 Prompt。
         ChatOptions options = requestOptions(turn);
         ChatModel model = selectModel(turn, prompt);
+        return invoke(turn, prompt, model, options);
+    }
+
+    /**
+     * 使用 Runner 已经选定的模型执行请求。
+     *
+     * <p>上下文压缩与超限重试必须固定使用同一模型，因此 Runner 先选择模型，再通过该重载调用；
+     * 避免动态 ModelSelector 在同一次真实调用链中被重复执行并切换作用域。</p>
+     */
+    AiMessageResponse invoke(AgentTurn turn, Prompt prompt, ChatModel model) {
+        return invoke(turn, prompt, model, requestOptions(turn));
+    }
+
+    /**
+     * 根据 streaming 配置执行同步或流式调用，并统一处理超时、取消和执行句柄注册。
+     */
+    private AiMessageResponse invoke(AgentTurn turn, Prompt prompt, ChatModel model,
+                                     ChatOptions options) {
+        if (model == null) throw new IllegalArgumentException("model must not be null");
         if (!turn.isStreaming()) {
             long timeout = turn.getExecutionPolicy().getModelCallTimeoutMillis();
             AtomicReference<AgentExecutionRegistry.Registration> registrationRef = new AtomicReference<>();
@@ -245,10 +264,13 @@ final class AgentModelInvoker {
     }
 
     /**
-     * 多模态模型的选择以实际发送给模型的 Prompt 为准，而非仅检查最新用户消息。
+     * 为一次真实模型调用选择唯一模型。
+     *
+     * <p>多模态模型的选择以实际发送给模型的 Prompt 为准，而非仅检查最新用户消息。
      * 这样历史图片仍处于上下文窗口时，后续文本追问也不会错误地落到纯文本模型。
+     * Runner 会复用这里的返回值完成压缩作用域判断、异常恢复和最终调用。</p>
      */
-    private ChatModel selectModel(AgentTurn turn, Prompt prompt) {
+    ChatModel selectModel(AgentTurn turn, Prompt prompt) {
         if (turn.getAgent().getModelSelector() != null) {
             ChatModel selected = turn.getAgent().getModelSelector().select(turn, prompt,
                 turn.getAgent().getChatModel(), turn.getAgent().getMultimodalChatModel());

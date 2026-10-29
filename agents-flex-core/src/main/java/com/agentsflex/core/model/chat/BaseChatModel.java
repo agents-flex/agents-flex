@@ -91,6 +91,14 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     }
 
     /**
+     * 从模型配置中暴露稳定容量；配置缺失时返回未知能力，避免调用方进行错误推导。
+     */
+    @Override
+    public ChatModelCapabilities getCapabilities() {
+        return config == null ? ChatModelCapabilities.unknown() : config.toCapabilities();
+    }
+
+    /**
      * 构建应用拦截器注册列表。框架拦截器在每次请求创建责任链快照时合并。
      *
      * @param userInterceptors 用户提供的拦截器列表
@@ -176,7 +184,9 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
     }
 
 
-    /** Builds and stably sorts the effective registration snapshot for one request. */
+    /**
+     * Builds and stably sorts the effective registration snapshot for one request.
+     */
     private List<ChatInterceptorRegistration> buildRequestInterceptorChain(Prompt prompt) {
         List<ChatInterceptorRegistration> chain = new ArrayList<>();
         chain.addAll(FrameworkChatInterceptors.getRegistrations());
@@ -239,7 +249,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * 递归构建拦截器链，链尾节点负责创建并调用 {@link ChatClient}。
      *
      * @param registrations 当前请求的拦截器注册快照
-     * @param index 当前拦截器索引
+     * @param index         当前拦截器索引
      * @return 同步责任链
      */
     private SyncChain buildSyncChain(List<ChatInterceptorRegistration> registrations, int index) {
@@ -277,7 +287,7 @@ public abstract class BaseChatModel<T extends BaseChatConfig> implements ChatMod
      * 与同步链类似，但支持流式监听器。
      *
      * @param registrations 当前请求的拦截器注册快照
-     * @param index 当前拦截器索引
+     * @param index         当前拦截器索引
      * @return 流式责任链
      */
     private StreamChain buildStreamChain(List<ChatInterceptorRegistration> registrations, int index) {
