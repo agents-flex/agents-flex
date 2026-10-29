@@ -18,7 +18,11 @@ package com.agentsflex.core.test.splitter;
 import com.agentsflex.core.document.Document;
 import com.agentsflex.core.document.splitter.SimpleTokenizeSplitter;
 
+import com.knuddels.jtokkit.Encodings;
+import com.knuddels.jtokkit.api.EncodingType;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
@@ -70,4 +74,14 @@ public class SimpleTokenizeSplitterTest {
     }
 
 
+    @Test
+    public void stopsAfterLastOverlappingChunk() {
+        String content = "Hello world, this is a short test.";
+        int tokenCount = Encodings.newDefaultEncodingRegistry()
+            .getEncoding(EncodingType.CL100K_BASE).encode(content).size();
+        SimpleTokenizeSplitter exact = new SimpleTokenizeSplitter(tokenCount, 1);
+        assertEquals(1, exact.split(Document.of(content)).size());
+        SimpleTokenizeSplitter twoChunks = new SimpleTokenizeSplitter(tokenCount - 1, 1);
+        assertEquals(2, twoChunks.split(Document.of(content)).size());
+    }
 }

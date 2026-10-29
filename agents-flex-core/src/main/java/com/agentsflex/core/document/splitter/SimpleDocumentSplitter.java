@@ -89,6 +89,9 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
             currentIndex = currentIndex + chunkSize - overlapSize;
 
             if (chunk.isEmpty()) {
+                if (endIndex == maxIndex) {
+                    break;
+                }
                 continue;
             }
 
@@ -99,6 +102,9 @@ public class SimpleDocumentSplitter implements DocumentSplitter {
 
             chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
             chunkDocuments.add(chunkDocument);
+            if (endIndex == maxIndex) {
+                break;
+            }
         }
 
         return chunkDocuments;
