@@ -372,6 +372,7 @@ export default withMermaid(defineConfig({
                         {text: '错误处理与重试', link: '/zh/agent/retry'},
                         {text: '工具执行控制', link: '/zh/agent/tool-execution'},
                         {text: '上下文管理', link: '/zh/agent/context-management'},
+                        {text: '上下文 Token 消耗感知', link: '/zh/agent/context-usage'},
                         {text: '上下文压缩', link: '/zh/agent/context-compression'},
                         {text: 'Middleware 扩展', link: '/zh/agent/middleware'},
                         {text: 'AgentToolContext', link: '/zh/agent/tool-context'},
