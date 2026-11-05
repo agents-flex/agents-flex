@@ -110,7 +110,7 @@ classDiagram
     *   `validateSqlReadOnly`: 检查是否包含危险关键字。
     *   `SqlInterceptor Chain`:
         *   `LimitSqlInterceptor`: 确保有 `LIMIT`。
-        *   `TenantSqlInterceptor`: 添加 `AND tenant_id = ?`。
+        *   `TenantSqlInterceptor`: 把 `tenant_id` 过滤插入 `WHERE` 条件中（语句没有 `WHERE` 时补 `WHERE`，并保证 `GROUP BY` / `HAVING` / `ORDER BY` / `LIMIT` 仍在最后）。
         *   `SqlAuditInterceptor`: 记录日志。
     *   `JdbcQueryUtil`: 执行 JDBC 查询。
 7.  **返回结果**: JSON 格式数据返回给 LLM。
@@ -276,8 +276,11 @@ public class TenantSqlInterceptor implements SqlInterceptor {
         SqlExecuteContext ctx = invocation.getContext();
         Long tenantId = (Long) ctx.getAttribute("tenantId");
         if (tenantId != null) {
-            // 注意：生产环境应使用参数化占位符 '?' 而非字符串拼接
-            ctx.setSql(ctx.getSql() + " AND tenant_id = " + tenantId);
+            // 条件要插到 WHERE 里，而不是拼在语句末尾：
+            // 语句没有 WHERE 时要补 WHERE，语句以 GROUP BY / ORDER BY / LIMIT 结尾时
+            // 要插在这些子句之前，否则 SQL 非法，或者条件被并进 ORDER BY 而失去过滤作用。
+            // 内置实现（含子句定位）见 com.agentsflex.text2sql.interceptor.TenantSqlInterceptor
+            ctx.setSql(insertTenantCondition(ctx.getSql(), tenantId));
         }
         return invocation.proceed();
     }
