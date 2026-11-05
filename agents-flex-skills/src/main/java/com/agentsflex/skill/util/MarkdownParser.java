@@ -45,11 +45,16 @@ import java.util.Map;
  * <li>{@code null} 或空输入。</li>
  * </ul>
  *
+ * <p>分隔符按整行识别：只有内容为 {@code ---} 的行才算分隔符，值里出现的 {@code ---}
+ * （例如描述中用破折号写法）不会提前结束 front matter。文件开头允许存在 UTF-8 BOM。</p>
+ *
  * <p>这不是完整 YAML 解析器，不支持嵌套对象、数组、块文本等高级 YAML 语法。</p>
  *
  * @author Christian Tzolov
  */
 public class MarkdownParser {
+
+    private static final char BYTE_ORDER_MARK = '\uFEFF';
 
     /**
      * 已解析的 front matter 键值对。
@@ -75,26 +80,34 @@ public class MarkdownParser {
             return;
         }
 
-        // 只有文件开头的 --- 才会被识别为 front matter 起始分隔符。
-        if (markdown.startsWith("---")) {
-            // 查找结束分隔符。
-            int endIndex = markdown.indexOf("---", 3);
+        int documentStart = markdown.charAt(0) == BYTE_ORDER_MARK ? 1 : 0;
+        int afterOpeningLine = lineAfter(markdown, documentStart);
 
-            if (endIndex != -1) {
-                // 解析两个分隔符之间的元数据。
-                String frontMatterSection = markdown.substring(3, endIndex).trim();
-                parseFrontMatter(frontMatterSection);
-
-                // 跳过结束分隔符，并去掉正文首尾空白。
-                content = markdown.substring(endIndex + 3).trim();
-            } else {
-                // 缺少结束分隔符时不猜测元数据，整份文档按正文处理。
-                content = markdown;
-            }
-        } else {
-            // 普通 Markdown 全部作为正文。
-            content = markdown;
+        // 只有文件开头的 --- 独立成行时才会被识别为 front matter 起始分隔符。
+        if (afterOpeningLine < 0 || !isDelimiterLine(markdown, documentStart, afterOpeningLine)) {
+            content = markdown.substring(documentStart);
+            return;
         }
+
+        // 逐行查找结束分隔符：值内部的 --- 不会提前结束 front matter。
+        int position = afterOpeningLine;
+        while (position < markdown.length()) {
+            int next = lineAfter(markdown, position);
+            int lineEnd = next < 0 ? markdown.length() : next;
+            if (isDelimiterLine(markdown, position, lineEnd)) {
+                parseFrontMatter(markdown.substring(afterOpeningLine, position).trim());
+                // 跳过结束分隔符，并去掉正文首尾空白。
+                content = markdown.substring(lineEnd).trim();
+                return;
+            }
+            if (next < 0) {
+                break;
+            }
+            position = next;
+        }
+
+        // 缺少结束分隔符时不猜测元数据，整份文档按正文处理。
+        content = markdown.substring(documentStart);
 
     }
 
@@ -120,6 +133,40 @@ public class MarkdownParser {
                 frontMatter.put(key, value);
             }
         }
+    }
+
+    /**
+     * 返回一行结束符之后的位置；该行没有换行符时返回 {@code -1}。
+     */
+    private static int lineAfter(String markdown, int start) {
+        for (int i = start; i < markdown.length(); i++) {
+            char c = markdown.charAt(i);
+            if (c == '\n') {
+                return i + 1;
+            }
+            if (c == '\r') {
+                return i + 1 < markdown.length() && markdown.charAt(i + 1) == '\n' ? i + 2 : i + 1;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 判断 {@code [start, end)} 这一行去掉首尾空白后是否恰好是 {@code ---}。
+     */
+    private static boolean isDelimiterLine(String markdown, int start, int end) {
+        int from = start;
+        int to = end;
+        while (from < to && Character.isWhitespace(markdown.charAt(from))) {
+            from++;
+        }
+        while (to > from && Character.isWhitespace(markdown.charAt(to - 1))) {
+            to--;
+        }
+        return to - from == 3
+            && markdown.charAt(from) == '-'
+            && markdown.charAt(from + 1) == '-'
+            && markdown.charAt(from + 2) == '-';
     }
 
     private String removeQuotes(String value) {
