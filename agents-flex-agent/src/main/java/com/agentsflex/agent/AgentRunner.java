@@ -9,6 +9,9 @@ package com.agentsflex.agent;
 import com.agentsflex.agent.compression.AgentContextCompressionPolicy;
 import com.agentsflex.agent.compression.AgentContextCompressionResult;
 import com.agentsflex.agent.compression.AgentContextCompressor;
+import com.agentsflex.agent.context.AgentContextCompressionReason;
+import com.agentsflex.agent.context.AgentContextUsagePolicy;
+import com.agentsflex.agent.context.AgentContextUsageState;
 import com.agentsflex.agent.event.AgentEventListener;
 import com.agentsflex.agent.event.AgentEventType;
 import com.agentsflex.agent.exception.AgentConversationBusyException;
@@ -26,6 +29,9 @@ import com.agentsflex.core.memory.ChatMemory;
 import com.agentsflex.core.memory.ChatMemoryProvider;
 import com.agentsflex.core.message.*;
 import com.agentsflex.core.model.chat.response.AiMessageResponse;
+import com.agentsflex.core.model.chat.ChatModel;
+import com.agentsflex.core.model.chat.ChatModelCapabilities;
+import com.agentsflex.core.model.exception.TokenLimitExceededException;
 import com.agentsflex.core.model.chat.tool.Tool;
 import com.agentsflex.core.model.chat.tool.ToolExecutionTarget;
 import com.agentsflex.core.prompt.Prompt;
@@ -66,7 +72,9 @@ public final class AgentRunner {
 
     static final String TOOL_INPUT_TARGET = "TOOL";
 
-    /** 保存 Snapshot 和取消标记的 Turn 存储。 */
+    /**
+     * 保存 Snapshot 和取消标记的 Turn 存储。
+     */
     private final AgentTurnStore turnStore;
     /**
      * 创建新任务和恢复旧任务时解析完整 Agent 的加载器。
@@ -80,6 +88,10 @@ public final class AgentRunner {
      * 统一模型调用、Token 统计和事件发布的适配器。
      */
     private final AgentModelInvoker modelInvoker;
+    /**
+     * 负责服务端 Usage 基准、阈值标记、输出预留和压缩后基准失效的状态协调器。
+     */
+    private final AgentContextUsageManager contextUsageManager;
     /**
      * 推进模型产生的 ToolCall，并把执行结果提交回 Runner 的生命周期边界。
      */
@@ -150,6 +162,7 @@ public final class AgentRunner {
         this.executionRegistry = new AgentExecutionRegistry();
         this.modelInvoker = new AgentModelInvoker(eventPublisher, this.runnerOptions.getModelExecutor(),
             executionRegistry);
+        this.contextUsageManager = new AgentContextUsageManager();
         this.chatMemory = new AgentRunnerChatMemory(chatMemoryProvider);
         this.toolCallProcessor = new AgentToolCallProcessor(this, eventPublisher, this.runnerOptions);
     }
@@ -576,10 +589,16 @@ public final class AgentRunner {
                 List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
                 List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
                 try {
-                    AgentContextCompressionResult result = policy
-                        .compress(conversationId, compressible,
+                    AgentContextCompressionResult result;
+                    if (policy.isAutomatic() && !agent.getContextUsagePolicy().isEnabled()) {
+                        // 未启用服务端 Usage 策略时，保持旧行为：会话入口即可由本地决策器自动压缩。
+                        result = policy.compress(conversationId, compressible,
                             () -> eventPublisher.notifyContextCompressionStarted(
                                 turn, history.size(), compressible.size()));
+                    } else {
+                        // Usage 策略启用后只恢复已持久化摘要；新的压缩必须等待实际模型和作用域确定。
+                        result = policy.loadView(conversationId, compressible);
+                    }
                     modelHistory = new ArrayList<>(result.getModelMessages());
                     modelHistory.addAll(protectedTail);
                     turn.replaceConversationHistory(modelHistory);
@@ -1078,21 +1097,21 @@ public final class AgentRunner {
             return AgentStepResult.of(null, null, null);
         }
 
-        // 迭代次数表示模型调用次数，在发起请求前增加，失败的模型请求同样消耗一次尝试。
-        turn.incrementIteration();
-        eventPublisher.notifyModelStart(turn);
         AiMessageResponse response;
+        ChatModel selectedModel;
         try {
             // 模型 Middleware 以责任链包裹最终调用，可用于 tracing、缓存或受控 Prompt 增强。
             // 先按 Turn 边界构建上下文窗口，再交给 Middleware。Middleware 替换 Prompt 时
             // 不会绕过窗口，maxAttachedMessages 也只会在 Turn 之间裁剪（#82）。
-            AgentMiddlewareContext middlewareContext = new AgentMiddlewareContext(
-                this, turn, buildModelPrompt(turn, turn.getPrompt()));
-            response = proceedModelCall(turn, middlewareContext, 0);
+            Prompt preparedPrompt = buildModelPrompt(turn, turn.getPrompt());
+            // 动态模型只选择一次；后续 Usage 作用域、压缩和超限重试全部固定复用该模型。
+            selectedModel = modelInvoker.selectModel(turn, preparedPrompt);
+            preparedPrompt = compressBeforeModelCallIfRequired(
+                turn, selectedModel, preparedPrompt);
+            response = invokeModelWithContextRecovery(turn, preparedPrompt, selectedModel);
             validateResponse(response);
             // 有效模型响应结束当前连续失败链，但 retryCount 作为生命周期累计指标继续保留。
             turn.resetConsecutiveRetryCount();
-            eventPublisher.notifyModelEnd(turn, response);
         } catch (RuntimeException error) {
             refreshCancellation(turn);
             return handleFailure(turn, null, error, AgentTurnExecutionPoint.INVOKE_MODEL);
@@ -1106,6 +1125,19 @@ public final class AgentRunner {
         // 部分模型供应商不返回 ToolCall ID；在写入 Prompt 和 Snapshot 前补成稳定关联键。
         toolCallProcessor.ensureToolCallIds(turn, message);
         turn.addUsage(message);
+        AgentContextUsagePolicy usagePolicy = turn.getAgent().getContextUsagePolicy();
+        // 只用供应商返回的完整 Usage 更新基准；本地 Token 字段不会进入该状态机。
+        AgentContextUsageState usageState = contextUsageManager.recordConfirmed(turn, selectedModel, message);
+        ChatModelCapabilities capabilities = contextUsageManager.capabilities(selectedModel);
+        long reservedOutputTokens = usagePolicy.isEnabled()
+            ? contextUsageManager.reservedOutputTokens(turn, usagePolicy, capabilities) : 0;
+        eventPublisher.notifyModelEnd(turn, response, capabilities, usagePolicy, usageState,
+            reservedOutputTokens);
+        if (usageState != null && usageState.isCompressionRequired()) {
+            // 当前响应已经完成，压缩标记由下一次真实模型调用消费，避免修改本次响应语义。
+            eventPublisher.notifyContextCompressionRequired(turn, usageState,
+                usagePolicy.getCompressionThresholdRatio());
+        }
         turn.getPrompt().addMessage(message);
         String budgetReason = budgetExceededReason(turn, false);
         if (budgetReason != null) {
@@ -1127,21 +1159,185 @@ public final class AgentRunner {
     /**
      * 递归构造模型 Middleware 责任链，链尾由 AgentModelInvoker 统一调用 ChatModel。
      */
-    private AiMessageResponse proceedModelCall(AgentTurn turn, AgentMiddlewareContext context, int index) {
+    private AiMessageResponse proceedModelCall(AgentTurn turn, AgentMiddlewareContext context,
+                                               ChatModel selectedModel, int index) {
         List<AgentMiddleware> middlewares = turn.getAgent().getMiddlewares();
         if (index >= middlewares.size()) {
-            return invokeModel(turn, context.getPrompt());
+            return invokeModel(turn, context.getPrompt(), selectedModel);
         }
         AgentMiddleware middleware = middlewares.get(index);
-        AgentModelCallChain chain = next -> proceedModelCall(turn, next, index + 1);
+        AgentModelCallChain chain = next -> proceedModelCall(turn, next, selectedModel, index + 1);
         return middleware.aroundModelCall(context, chain);
     }
 
     /**
-     * 调用模型适配器，并由适配器发布细粒度流式事件。
+     * 执行模型调用，并在可恢复的上下文超限异常后压缩历史、重建 Prompt、固定同一模型重试。
+     *
+     * <p>只恢复 {@code INPUT_CONTEXT} 和 {@code TOTAL_CONTEXT}；OUTPUT 或 UNKNOWN 可能是输出配置
+     * 或供应商分类不明，压缩输入历史不能保证解决，因此直接交给正常失败处理。</p>
      */
-    private AiMessageResponse invokeModel(AgentTurn turn, Prompt prompt) {
-        return modelInvoker.invoke(turn, prompt);
+    private AiMessageResponse invokeModelWithContextRecovery(AgentTurn turn, Prompt preparedPrompt,
+                                                             ChatModel selectedModel) {
+        AgentContextUsagePolicy usagePolicy = turn.getAgent().getContextUsagePolicy();
+        int attempts = usagePolicy.isEnabled() && usagePolicy.isCompressOnTokenLimitExceeded()
+            ? usagePolicy.getMaxTokenLimitRecoveryAttempts() : 0;
+        Prompt currentPrompt = preparedPrompt;
+        for (int recoveryAttempt = 0; ; recoveryAttempt++) {
+            // 每一次真实请求（包括压缩后的重试）都消耗一个模型迭代预算并产生 MODEL_STARTED 事件。
+            turn.incrementIteration();
+            eventPublisher.notifyModelStart(turn);
+            try {
+                AgentMiddlewareContext middlewareContext = new AgentMiddlewareContext(
+                    this, turn, currentPrompt);
+                return proceedModelCall(turn, middlewareContext, selectedModel, 0);
+            } catch (RuntimeException error) {
+                TokenLimitExceededException limit = findTokenLimitExceeded(error);
+                if (limit == null || recoveryAttempt >= attempts
+                    || !isRecoverableContextPhase(limit.getPhase())
+                    || !StringUtil.hasText(turn.getConversationId())) {
+                    throw error;
+                }
+                turn.recordModelInvocationFailure(
+                    AgentModelFailure.from(error, turn.getIterationCount()));
+                // 压缩完成后 Snapshot 会立即保存；若没有可压缩历史，则保留原异常，不进行空重试。
+                if (!forceCompressCurrentTurn(turn, selectedModel,
+                    AgentContextCompressionReason.TOKEN_LIMIT_EXCEPTION, recoveryAttempt + 1)) {
+                    throw error;
+                }
+                currentPrompt = buildModelPrompt(turn, turn.getPrompt());
+            }
+        }
+    }
+
+    /**
+     * 在每一次真实模型调用前消费服务端 Usage 阈值标记。
+     *
+     * <p>该检查不仅发生在新会话轮次开始时，也发生在同一 Turn 工具执行后的第二次模型调用前，
+     * 从而保证第一轮工具调用返回高 Usage 后可以在下一次请求前及时压缩。</p>
+     */
+    private Prompt compressBeforeModelCallIfRequired(AgentTurn turn, ChatModel selectedModel,
+                                                     Prompt preparedPrompt) {
+        AgentContextUsageState usage = contextUsageManager.load(turn, selectedModel);
+        boolean compressed;
+        if (usage != null && usage.isCompressionRequired()) {
+            compressed = compressCurrentTurn(turn, selectedModel,
+                AgentContextCompressionReason.THRESHOLD_REACHED, 0, true);
+        } else if (StringUtil.hasText(turn.getConversationId())
+            && turn.getAgent().getCompressionPolicy().isAutomatic()) {
+            compressed = compressCurrentTurn(turn, selectedModel,
+                AgentContextCompressionReason.POLICY_TRIGGERED, 0, false);
+        } else {
+            compressed = false;
+        }
+        return compressed ? buildModelPrompt(turn, turn.getPrompt()) : preparedPrompt;
+    }
+
+    /**
+     * 以强制模式压缩当前历史，是阈值触发和 Token 超限恢复共用的入口。
+     */
+    private boolean forceCompressCurrentTurn(AgentTurn turn, ChatModel selectedModel,
+                                             AgentContextCompressionReason reason,
+                                             int recoveryAttempt) {
+        return compressCurrentTurn(turn, selectedModel, reason, recoveryAttempt, true);
+    }
+
+    /**
+     * 压缩当前模型可见历史，并保护当前 Turn 与最近保留 Turn。
+     *
+     * @param reason          压缩原因，用于 Usage 失效状态和事件审计
+     * @param recoveryAttempt 超限恢复序号；非恢复压缩为 0
+     * @param force           是否跳过旧决策器直接执行压缩
+     * @return 是否真正生成并保存了新摘要
+     */
+    private boolean compressCurrentTurn(AgentTurn turn, ChatModel selectedModel,
+                                        AgentContextCompressionReason reason,
+                                        int recoveryAttempt, boolean force) {
+        AgentContextCompressionPolicy policy = turn.getAgent().getCompressionPolicy();
+        if (!policy.isIncremental()) {
+            throw new IllegalStateException("token-limit recovery requires a persistent compression policy");
+        }
+        List<Message> history = chatMemory.isEnabled()
+            ? chatMemory.loadModelHistory(turn.getConversationId(), Integer.MAX_VALUE)
+            : turn.getPrompt().getMemory().getMessages(Integer.MAX_VALUE);
+        List<Message> currentMessages = turn.getConversationHistory();
+        int base = Math.min(turn.getConversationBaseMessageCount(), currentMessages.size());
+        List<Message> currentTurnMessages = currentMessages.subList(base, currentMessages.size());
+        if (!currentTurnMessages.isEmpty()) {
+            // ChatMemory 可能已经投影了当前 Turn 的部分消息；先按首条本轮消息截断，禁止压缩本轮协议链。
+            String firstCurrentId = currentTurnMessages.get(0).getMessageId();
+            for (int index = 0; index < history.size(); index++) {
+                if (firstCurrentId.equals(history.get(index).getMessageId())) {
+                    history = new ArrayList<>(history.subList(0, index));
+                    break;
+                }
+            }
+        }
+        List<Message> compressible = compressiblePrefix(history, policy.getKeepRecentTurns());
+        // 最近 keepRecentTurns 个完整 Turn 不进入摘要，继续以原始消息形式发送给模型。
+        List<Message> protectedTail = new ArrayList<>(history.subList(compressible.size(), history.size()));
+        if (compressible.isEmpty()) {
+            return false;
+        }
+        final int historyMessageCount = history.size();
+        final int pendingMessageCount = compressible.size();
+        try {
+            Runnable started = () -> eventPublisher.notifyContextCompressionStarted(
+                turn, historyMessageCount, pendingMessageCount);
+            AgentContextCompressionResult result = force
+                ? policy.forceCompress(turn.getConversationId(), compressible, started)
+                : policy.compress(turn.getConversationId(), compressible, started);
+            List<Message> modelHistory = new ArrayList<>(result.getModelMessages());
+            modelHistory.addAll(protectedTail);
+            turn.replaceConversationHistoryPrefix(modelHistory);
+            if (result.isCompressed()) {
+                // 摘要改变了模型可见上下文，旧 Usage 即使数值仍保留，也不再代表当前上下文。
+                AgentContextUsageState invalidated =
+                    contextUsageManager.invalidate(turn, selectedModel, reason);
+                if (recoveryAttempt > 0) {
+                    turn.putMetadata("contextCompressionRecoveryAttempt", recoveryAttempt);
+                }
+                eventPublisher.notifyContextCompressionCompleted(turn, result, invalidated);
+                // 超限恢复会立刻重试；必须先保存摘要后的 Turn，保证进程中断后可从同一视图恢复。
+                saveSnapshot(turn);
+            }
+            return result.isCompressed();
+        } catch (RuntimeException error) {
+            eventPublisher.notifyContextCompressionFailed(turn, error);
+            throw error;
+        }
+    }
+
+    /**
+     * 沿异常 cause 链查找 Token 上限异常，并防御异常链中可能存在的循环引用。
+     */
+    private TokenLimitExceededException findTokenLimitExceeded(Throwable error) {
+        Set<Throwable> visited = Collections.newSetFromMap(
+            new IdentityHashMap<Throwable, Boolean>());
+        Throwable current = error;
+        while (current != null && visited.add(current)) {
+            if (current instanceof TokenLimitExceededException) {
+                return (TokenLimitExceededException) current;
+            }
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    /**
+     * @return 该阶段是否可通过压缩输入历史尝试恢复
+     */
+    private boolean isRecoverableContextPhase(TokenLimitExceededException.Phase phase) {
+        return phase == TokenLimitExceededException.Phase.INPUT_CONTEXT
+            || phase == TokenLimitExceededException.Phase.TOTAL_CONTEXT;
+    }
+
+    /**
+     * 调用模型适配器，并显式传入本次调用链已经固定的模型。
+     *
+     * <p>事件仍由适配器发布；这里只负责避免重试时再次执行动态模型选择。</p>
+     */
+    private AiMessageResponse invokeModel(AgentTurn turn, Prompt prompt, ChatModel model) {
+        return modelInvoker.invoke(turn, prompt, model);
     }
 
     /**

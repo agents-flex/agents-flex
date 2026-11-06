@@ -121,6 +121,9 @@ public class SimpleTokenizeSplitter implements DocumentSplitter {
             }
             String chunkText = encoding.decode(intArrayList).trim();
             if (chunkText.isEmpty()) {
+                if (endIndex == maxIndex) {
+                    break;
+                }
                 currentIndex = currentIndex + chunkSize - overlapSize;
                 continue;
             }
@@ -152,6 +155,9 @@ public class SimpleTokenizeSplitter implements DocumentSplitter {
 
             chunkDocument.setId(idGenerator == null ? null : idGenerator.generateId(chunkDocument));
             chunkDocuments.add(chunkDocument);
+            if (endIndex == maxIndex) {
+                break;
+            }
         }
 
         return chunkDocuments;

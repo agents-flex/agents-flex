@@ -265,6 +265,88 @@ AgentContextCompressionStateStore compressionStateStore =
 JDBC 的表结构应在正式发布时通过数据库迁移工具管理。使用 Redis URI 创建客户端时，应用关闭阶段应关闭
 `storeConfig`。如果业务实现自己的状态存储，需要保证同一个会话的并发更新不会互相覆盖。
 
+## 根据服务端 Token Usage 触发压缩
+
+如果模型供应商会在成功响应中返回输入、输出或总 Token Usage，可以让 Agent 在已确认的上下文基准达到
+阈值后，于**下一次模型调用之前**执行增量压缩；这里也包括同一 Turn 在工具执行完成后的后续模型调用。
+这条链路不调用本地 Token 计数器，也不会使用
+`localPromptTokens`、`localCompletionTokens` 或 `localTotalTokens` 建立基准。
+
+```java
+OpenAIChatConfig chatConfig = OpenAIChatConfig.builder()
+    .apiKey(apiKey)
+    .model("your-model")
+    .contextWindowTokens(128_000)
+    .maxOutputTokens(8_192)
+    .build();
+
+JdbcAgentStoreConfig storeConfig =
+    JdbcAgentStoreConfig.builder(dataSource).build();
+storeConfig.schema().initialize();
+
+AgentContextCompressor compressor = AgentContextCompressors.model(
+    summaryModel,
+    "保留事实、业务 ID、数字、用户约束和未完成事项；不要编造信息"
+);
+
+Agent agent = Agent.builder("support-agent")
+    .chatModel(chatConfig.toChatModel())
+    .compressionPolicy(AgentContextCompressionPolicy.builder()
+        .stateStore(storeConfig.compressionStateStore())
+        .compressor(compressor)
+        .keepRecentTurns(2)
+        .build())
+    .contextUsagePolicy(AgentContextUsagePolicy.builder()
+        .enabled(true)
+        .stateStore(storeConfig.usageStateStore())
+        .compressionThresholdRatio(0.90)
+        .reservedOutputTokens(8_192)
+        .compressOnTokenLimitExceeded(true)
+        .maxTokenLimitRecoveryAttempts(1)
+        .build())
+    .build();
+```
+
+| 配置 | 作用 |
+| --- | --- |
+| `compressionThresholdRatio(0.90)` | 服务端确认的下一轮上下文基准达到可用容量 90% 后标记待压缩 |
+| `reservedOutputTokens(...)` | 从总上下文容量中预留输出空间；未设置时依次使用请求 `maxTokens`、模型 `maxOutputTokens` |
+| `compressOnTokenLimitExceeded(true)` | 输入或总上下文超限异常时立即压缩并重试 |
+| `maxTokenLimitRecoveryAttempts(1)` | 最多执行一次“压缩后重试”，避免无限循环 |
+| `usageStateStore()` | 按会话、Agent 版本和模型保存服务端确认基准 |
+
+阈值计算使用 `contextWindowTokens - reservedOutputTokens` 作为可用输入容量。成功响应返回的
+`totalTokens` 优先作为下一轮基准；如果供应商没有返回总量，则必须同时返回输入和输出 Usage，框架才会使用
+二者之和。只有输入或只有输出属于不完整数据，不会建立“已确认”基准。容量未知、没有完整服务端 Usage，
+或者可用容量不大于零时，不会根据比例触发压缩。
+
+`nextCallBaselineTokens` 是最近一次供应商响应能够确认的基准，不是对输入框、后续 ToolMessage 或尚未发送的新
+消息进行的本地估算。在这些消息真正发送并获得下一次服务端 Usage 之前，页面可以展示“最近确认值”，但不能把
+它描述成包含所有待发送内容的精确当前 Token。若新增内容直接导致超限，则由服务端异常恢复链路处理。
+
+压缩成功后，旧 Usage 仍保留用于审计，但状态会变为 `BASELINE_INVALIDATED`，不能继续展示为当前模型可见
+上下文的准确用量。下一次模型调用成功并返回服务端 Usage 后，状态才重新变为 `CONFIRMED_BASELINE`。因此页面
+应根据 `usageStatus` 区分“已确认”“压缩后待重新确认”和“从未获得服务端 Usage”。
+这一规则适用于 Usage 阈值、上下文超限恢复以及原有 Decider 触发的增量自动压缩；所有持久化压缩都在本次
+真实调用模型已经选定后执行，保证失效的是正确模型作用域下的基准。
+如果某次成功调用没有返回服务端 Usage，即使上一轮曾经确认过基准，框架也会将旧基准标记失效，因为本轮
+输出已经改变了下一次请求的上下文。失效状态不会提供可展示的剩余 Token 或比例。
+
+### 上下文超限恢复
+
+当模型抛出 `TokenLimitExceededException` 时，Runner 只对 `INPUT_CONTEXT` 和 `TOTAL_CONTEXT` 两个阶段
+执行历史压缩。重试固定使用首次选择的同一个模型，且每次真实请求都会计入 iteration。`OUTPUT` 表示输出上限
+不足，压缩历史通常不能解决，因此不会触发压缩；`UNKNOWN` 也不会被框架猜测为上下文问题。
+
+即使供应商没有返回 Usage，上述异常恢复仍然可以工作，因为触发依据是服务端异常而不是本地估算。如果没有
+可压缩的较早历史、压缩器采用 `USE_ORIGINAL` 后没有生成新摘要，或者已达到恢复次数上限，Runner 会进入现有
+模型失败处理流程。
+
+这套状态以 `conversationId` 保存，只适用于 `AgentRunner` 的持续会话 API。完整 `ChatMemory` 不会被删除；
+压缩状态只决定发送给模型的历史视图。启用 `contextUsagePolicy` 时，必须同时配置带 `stateStore` 和
+`compressor` 的持久化 `compressionPolicy`。JDBC Schema 会创建 `context_usage_states` 表；Redis Store 使用
+独立的 context usage key。
+
 ## 其他压缩器
 
 `AgentContextCompressors` 还提供以下实现：

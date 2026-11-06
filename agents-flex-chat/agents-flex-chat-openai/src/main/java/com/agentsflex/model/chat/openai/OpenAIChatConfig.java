@@ -103,6 +103,22 @@ public class OpenAIChatConfig extends BaseChatConfig {
         }
 
         /**
+         * 设置模型输入与输出合计的上下文容量；0 表示未知。
+         */
+        public Builder contextWindowTokens(long value) {
+            config.setContextWindowTokens(value);
+            return this;
+        }
+
+        /**
+         * 设置模型允许的最大输出 Token；未配置请求级 maxTokens 时可用于输出预留。
+         */
+        public Builder maxOutputTokens(long value) {
+            config.setMaxOutputTokens(value);
+            return this;
+        }
+
+        /**
          * 添加单个自定义属性（会进行深拷贝，不会持有外部引用）。
          */
         public Builder customProperty(String key, Object value) {

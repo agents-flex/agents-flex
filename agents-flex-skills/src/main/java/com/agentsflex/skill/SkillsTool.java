@@ -42,6 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -248,6 +249,48 @@ public class SkillsTool {
             if (!missingNames.isEmpty()) {
                 throw new IllegalArgumentException("Skills not found under directory '"
                     + skillsRootDirectory + "': " + missingNames);
+            }
+
+            this.skills.addAll(selectedSkills);
+            return this;
+        }
+
+        /**
+         * 从一个本机 Skills 根目录中按自定义条件筛选并添加 Skill。
+         *
+         * <p>与按名称选择相比，本方法按 {@link Skill} 元数据做通用筛选，典型用法是按
+         * {@code description} 关键词过滤，例如只把与当前场景相关的 Skill 暴露给模型，
+         * 控制工具描述的长度和模型选择的准确性。筛选在
+         * {@link SkillRuntime#prepare(SkillPreparationRequest)} 之前完成，未选中的 Skill
+         * 不会被上传到远程 Runtime，也不会出现在模型可见的工具描述中。</p>
+         *
+         * @param skillsRootDirectory 包含一个或多个 {@code SKILL.md} 的根目录
+         * @param skillFilter         Skill 筛选条件，不能为空
+         * @return 当前构建器
+         * @throws IllegalArgumentException 筛选条件为空、没有 Skill 满足条件或满足条件的 Skill 名称存在歧义
+         */
+        public Builder addSkillsDirectory(String skillsRootDirectory, Predicate<Skill> skillFilter) {
+            if (skillFilter == null) {
+                throw new IllegalArgumentException("skillFilter must not be null");
+            }
+            List<Skill> loadedSkills = Skills.loadDirectory(skillsRootDirectory);
+            List<Skill> selectedSkills = new ArrayList<>();
+            Set<String> matchedNames = new LinkedHashSet<>();
+
+            for (Skill skill : loadedSkills) {
+                if (!skillFilter.test(skill)) {
+                    continue;
+                }
+                if (!matchedNames.add(skill.name())) {
+                    throw new IllegalArgumentException("Multiple skills named '" + skill.name()
+                        + "' found under directory: " + skillsRootDirectory);
+                }
+                selectedSkills.add(skill);
+            }
+
+            if (selectedSkills.isEmpty()) {
+                throw new IllegalArgumentException("No skills matched the filter under directory '"
+                    + skillsRootDirectory + "'");
             }
 
             this.skills.addAll(selectedSkills);

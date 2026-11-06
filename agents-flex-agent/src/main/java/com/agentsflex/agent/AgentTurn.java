@@ -623,6 +623,34 @@ public final class AgentTurn {
     }
 
     /**
+     * 仅替换历史消息前缀，并完整保留当前 Turn 已产生的所有消息。
+     *
+     * <p>Token 超限可能发生在同一 Turn 的工具循环中，此时当前用户消息、AiMessage ToolCall 和
+     * ToolMessage 必须作为完整协议链保留。压缩仅替换当前 Turn 之前的模型可见历史，不会删除原始
+     * ChatMemory，也不会破坏工具调用关联。</p>
+     *
+     * @param history 压缩后的历史视图；为 {@code null} 时只保留当前 Turn 消息
+     */
+    void replaceConversationHistoryPrefix(List<? extends Message> history) {
+        List<Message> current = prompt.getMemory().getMessages(Integer.MAX_VALUE);
+        // conversationBaseMessageCount 是当前 Turn 起点；其后的消息全部属于本轮协议链。
+        int base = Math.min(getConversationBaseMessageCount(), current.size());
+        List<Message> currentTurn = new ArrayList<>(current.subList(base, current.size()));
+        prompt.clear();
+        if (history != null) {
+            for (Message message : history) {
+                if (message != null) prompt.addMessage(AgentMessageUtils.copyMessage(message));
+            }
+        }
+        for (Message message : currentTurn) {
+            prompt.addMessage(AgentMessageUtils.copyMessage(message));
+        }
+        // 更新基线位置，使后续 ChatMemory 投影只追加本轮新增消息，避免重复写入摘要视图。
+        bindConversation(getConversationId(), history == null ? 0 : history.size());
+        preparePrompt();
+    }
+
+    /**
      * 添加或覆盖一项业务运行元数据。
      */
     public void putMetadata(String key, Object value) {

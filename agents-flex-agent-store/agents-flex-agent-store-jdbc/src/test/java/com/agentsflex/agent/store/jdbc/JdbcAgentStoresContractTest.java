@@ -3,6 +3,9 @@ package com.agentsflex.agent.store.jdbc;
 import com.agentsflex.agent.AgentExecutionPolicy;
 import com.agentsflex.agent.compression.AgentContextCompressionState;
 import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
+import com.agentsflex.agent.context.AgentContextCompressionReason;
+import com.agentsflex.agent.context.AgentContextUsageState;
+import com.agentsflex.agent.context.AgentContextUsageStateStore;
 import com.agentsflex.agent.AgentTurnSnapshot;
 import com.agentsflex.agent.AgentTurnState;
 import com.agentsflex.agent.AgentTurnStatus;
@@ -61,6 +64,7 @@ public class JdbcAgentStoresContractTest {
         if (dataSource == null || tablePrefix == null) return;
         try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
             statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "compression_states");
+            statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "context_usage_states");
             statement.execute("DROP TABLE IF EXISTS " + tablePrefix + "turns");
         }
     }
@@ -105,7 +109,79 @@ public class JdbcAgentStoresContractTest {
         assertNull(store.load("missing-conversation"));
     }
 
-    /** 活动会话查询应排除终态。 */
+    /**
+     * 验证 JDBC Usage Store 按会话和模型作用域隔离，并支持状态失效更新。
+     */
+    @Test
+    public void shouldPersistContextUsageStateByConversationAndModelScope() {
+        AgentContextUsageStateStore store = config.usageStateStore();
+        AgentContextUsageState first = AgentContextUsageState.empty("conversation-1", "agent:1:model-a")
+            .confirmed(80, 10, 90, 90, true,
+                AgentContextCompressionReason.THRESHOLD_REACHED, 1);
+        assertTrue(store.save(first, 0));
+        assertFalse(store.save(first, 0));
+        assertEquals(90, store.load("conversation-1", "agent:1:model-a")
+            .getNextCallBaselineTokens());
+        assertNull(store.load("conversation-1", "agent:1:model-b"));
+
+        AgentContextUsageState invalidated = first.invalidated(
+            AgentContextCompressionReason.MANUAL, 2);
+        assertTrue(store.save(invalidated, first.getVersion()));
+        assertFalse(store.load("conversation-1", "agent:1:model-a").isCompressionRequired());
+    }
+
+    /**
+     * 验证全部 Usage 字段往返、参数边界和并发 CAS 单胜者语义。
+     */
+    @Test
+    public void shouldRoundTripAllUsageFieldsAndEnforceUsageStoreBoundaries() throws Exception {
+        final AgentContextUsageStateStore store = config.usageStateStore();
+        AgentContextUsageState first = AgentContextUsageState.empty("conversation-fields", "agent:2:model")
+            .confirmed(81, 9, 90, 90, true,
+                AgentContextCompressionReason.THRESHOLD_REACHED, 1234);
+        assertTrue(store.save(first, 0));
+        AgentContextUsageState loaded = store.load("conversation-fields", "agent:2:model");
+        assertEquals(1, loaded.getVersion());
+        assertEquals(81, loaded.getPromptTokens());
+        assertEquals(9, loaded.getCompletionTokens());
+        assertEquals(90, loaded.getTotalTokens());
+        assertEquals(90, loaded.getNextCallBaselineTokens());
+        assertTrue(loaded.isCompressionRequired());
+        assertEquals(AgentContextCompressionReason.THRESHOLD_REACHED, loaded.getCompressionReason());
+        assertEquals(1234, loaded.getConfirmedAt());
+
+        try {
+            store.save(new AgentContextUsageState(3, "conversation-fields", "agent:2:model",
+                loaded.getStatus(), 1, 1, 2, 2, false, null, 1, 0), 1);
+            fail("Expected version jump validation");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("invalid usage state save"));
+        }
+        try {
+            store.load(" ", "scope");
+            fail("Expected blank key validation");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("must not be blank"));
+        }
+
+        final CountDownLatch ready = new CountDownLatch(2);
+        final CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<Boolean> a = executor.submit(() -> saveUsageAfterBarrier(store, loaded, 91, ready, start));
+            Future<Boolean> b = executor.submit(() -> saveUsageAfterBarrier(store, loaded, 92, ready, start));
+            ready.await();
+            start.countDown();
+            assertEquals(1, (a.get() ? 1 : 0) + (b.get() ? 1 : 0));
+            assertEquals(2, store.load("conversation-fields", "agent:2:model").getVersion());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /**
+     * 活动会话查询应排除终态。
+     */
     @Test
     public void shouldFindActiveTurnForRecovery() {
         JdbcAgentTurnStore store = config.turnStore();
@@ -128,6 +204,15 @@ public class JdbcAgentStoresContractTest {
             .status(status).updatedAt(1)
             .metadata(Collections.<String, Object>singletonMap("key", "value")).build();
         return AgentTurnSnapshot.of("agent", "1", state);
+    }
+
+    private static boolean saveUsageAfterBarrier(AgentContextUsageStateStore store,
+                                                 AgentContextUsageState current, long total,
+                                                 CountDownLatch ready, CountDownLatch start) throws Exception {
+        AgentContextUsageState next = current.confirmed(total, 0, total, total, false, null, total);
+        ready.countDown();
+        start.await();
+        return store.save(next, current.getVersion());
     }
 
     private static String requiredEnv(String name) {

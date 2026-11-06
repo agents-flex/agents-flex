@@ -101,6 +101,8 @@ public class BochaSearchProvider implements SearchProvider {
 
             return parse(arr);
 
+        } catch (SearchException e) {
+            throw e;
         } catch (Exception e) {
             throw new SearchException(e);
         }
@@ -143,12 +145,13 @@ public class BochaSearchProvider implements SearchProvider {
 
         try (Response response = httpClient.newCall(httpRequest).execute()) {
 
+            ResponseBody responseBody = response.body();
+            String responseText = responseBody != null ? responseBody.string() : "";
             if (!response.isSuccessful()) {
-                return null;
+                throw new SearchException("Bocha Search HTTP Error: " + response.code()
+                    + (StringUtil.hasText(responseText) ? ", body=" + responseText : ""));
             }
-
-            ResponseBody rb = response.body();
-            return rb != null ? rb.string() : null;
+            return responseText;
         }
     }
 

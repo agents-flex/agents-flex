@@ -112,6 +112,28 @@ OpenAIChatConfig config = OpenAIChatConfig.builder()
 | `retryCount` | `3` | 最大重试次数配置 |
 | `retryInitialDelayMs` | `1000` | 初始重试延迟 |
 
+### 模型上下文容量
+
+`BaseChatConfig` 可以声明模型稳定的上下文容量，供 Agent 的服务端 Usage 跟踪和压缩策略使用：
+
+```java
+OpenAIChatConfig config = OpenAIChatConfig.builder()
+    .apiKey(apiKey)
+    .model("your-model")
+    .contextWindowTokens(128_000)
+    .maxOutputTokens(8_192)
+    .build();
+```
+
+| 字段 | 说明 |
+| --- | --- |
+| `contextWindowTokens` | 模型输入与输出共享的总上下文容量；`0` 表示未知 |
+| `maxOutputTokens` | 模型允许的最大输出容量；`0` 表示未知 |
+
+这两个值是模型能力声明，不是本次请求的实际用量，也不会让远端模型获得更大的窗口。它们必须与实际请求
+使用的模型一致；如果通过 `ChatOptions.model` 切换到另一模型，应使用具有对应能力声明的 `ChatModel` 实例。
+单次请求的输出上限仍通过 `ChatOptions.maxTokens` 配置。
+
 单次调用可以通过 `ChatOptions` 覆盖 thinking 和 retry 等部分行为。长期默认值放模型配置，请求差异放
 `ChatOptions`，避免并发修改共享对象。
 

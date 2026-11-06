@@ -19,7 +19,7 @@
 
 ### 1.2 核心特性
 
-- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Firecrawl、You.com、Serply 等主流搜索引擎支持
+- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Firecrawl、You.com、Serply、SerpBase 等主流搜索引擎支持
 - **领域过滤**：支持白名单（allowedDomains）和黑名单（blockedDomains）域名过滤
 - **结果格式化**：自动将搜索结果转换为 Markdown 格式，便于 LLM 理解
 - **Builder 模式**：提供流畅的 API 构建方式
@@ -74,6 +74,7 @@ graph TB
     C --> H[FirecrawlSearchProvider]
     C --> J[YouSearchProvider]
     C --> L[SerplySearchProvider]
+    C --> M[SerpBaseSearchProvider]
     C --> I[Custom Provider]
 
     B --> J[SearchRequest]

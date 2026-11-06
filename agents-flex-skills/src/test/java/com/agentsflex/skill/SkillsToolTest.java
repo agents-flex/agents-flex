@@ -111,6 +111,44 @@ public class SkillsToolTest {
     }
 
     @Test
+    public void filterSelectsSkillsByDescriptionKeyword() throws Exception {
+        createSkill("pdf", "PDF documents");
+        createSkill("xlsx", "Excel workbooks");
+        createSkill("pptx", "PowerPoint presentations");
+        RecordingRuntime runtime = new RecordingRuntime();
+
+        Tool skillTool = SkillsTool.builder()
+            .addSkillsDirectory(temporaryFolder.getRoot().getAbsolutePath(),
+                skill -> skill.getFrontMatter().get("description").toString().contains("PowerPoint"))
+            .runtime(runtime)
+            .build();
+
+        assertTrue(skillTool.getDescription().contains("<name>pptx</name>"));
+        assertFalse(skillTool.getDescription().contains("<name>pdf</name>"));
+        assertFalse(skillTool.getDescription().contains("<name>xlsx</name>"));
+        assertEquals("Skill not found: pdf", skillTool.invoke(
+            Collections.<String, Object>singletonMap("command", "pdf")));
+        Object result = skillTool.invoke(
+            Collections.<String, Object>singletonMap("command", "pptx"));
+        assertTrue(result.toString().contains("/runtime/pptx"));
+        assertEquals(Collections.singletonList("pptx"), runtime.preparedSkillNames);
+    }
+
+    @Test
+    public void filterWithNoMatchFailsFast() throws Exception {
+        createSkill("pdf", "PDF documents");
+
+        try {
+            SkillsTool.builder().addSkillsDirectory(
+                temporaryFolder.getRoot().getAbsolutePath(),
+                skill -> skill.getFrontMatter().get("description").toString().contains("video"));
+            fail("Expected filter with no match to fail");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().contains("No skills matched the filter"));
+        }
+    }
+
+    @Test
     public void artifactIsMaterializedBeforeLazyRuntimePreparation() throws Exception {
         File skillDirectory = createSkill("pdf", "PDF documents");
         SkillArtifact artifact = new SkillArtifact(

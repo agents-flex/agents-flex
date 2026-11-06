@@ -3,6 +3,7 @@ package com.agentsflex.agent.store.redis;
 import com.agentsflex.agent.store.AgentStoreSerializer;
 import com.agentsflex.agent.store.FastjsonAgentStoreSerializer;
 import com.agentsflex.agent.compression.AgentContextCompressionStateStore;
+import com.agentsflex.agent.context.AgentContextUsageStateStore;
 import redis.clients.jedis.JedisPooled;
 
 import java.net.URI;
@@ -48,9 +49,18 @@ public final class RedisAgentStoreConfig implements AutoCloseable {
         return new RedisAgentTurnStore(this);
     }
 
-    /** 创建使用同一 Redis 客户端和序列化器的上下文压缩状态 Store。 */
+    /**
+     * 创建使用同一 Redis 客户端和序列化器的上下文压缩状态 Store。
+     */
     public AgentContextCompressionStateStore compressionStateStore() {
         return new RedisAgentContextCompressionStateStore(this);
+    }
+
+    /**
+     * 创建使用同一 Redis 客户端、key 前缀和序列化器的服务端 Usage 状态 Store。
+     */
+    public AgentContextUsageStateStore usageStateStore() {
+        return new RedisAgentContextUsageStateStore(this);
     }
 
     @Override

@@ -20,6 +20,8 @@ import com.agentsflex.core.document.splitter.SimpleDocumentSplitter;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.List;
 
 public class SimpleDocumentSplitterTest {
@@ -70,4 +72,14 @@ public class SimpleDocumentSplitterTest {
     }
 
 
+    @Test
+    public void stopsAfterLastOverlappingChunk() {
+        SimpleDocumentSplitter splitter = new SimpleDocumentSplitter(4, 2);
+        assertEquals(1, splitter.split(Document.of("abcd")).size());
+        List<Document> chunks = splitter.split(Document.of("abcdef"));
+        assertEquals(2, chunks.size());
+        assertEquals("abcd", chunks.get(0).getContent());
+        assertEquals("cdef", chunks.get(1).getContent());
+        assertEquals(1, splitter.split(Document.of("abc ")).size());
+    }
 }
