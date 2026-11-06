@@ -155,9 +155,49 @@ public class SkillRuntimeFilePublishTools {
             .append("File name: ").append(name).append('\n')
             .append("Content type: ").append(type).append('\n')
             .append("Size: ").append(length).append(" bytes");
-        if (publishedFile.getExpiresAt() != null) {
-            result.append('\n').append("Expires at: ").append(publishedFile.getExpiresAt());
+        // 仅在存在失效时间时输出有效期，且换算成「多久之后」而不是毫秒时间戳：
+        // 毫秒值模型无法直接转述给用户，天数/小时是可读口径。
+        String validity = formatValidity(publishedFile.getExpiresAt());
+        if (validity != null) {
+            result.append('\n').append("Valid for: ").append(validity);
+            result.append('\n').append("Note: this is a temporary link. It expires in ").append(validity)
+                .append(", after which the file will be deleted and cannot be recovered. ")
+                .append("Always tell the user how long the link stays valid and remind them to save the file in time.");
         }
         return result.toString();
+    }
+
+    /**
+     * 把失效时间换算成人类可读的有效期。
+     *
+     * <p>口径：先四舍五入到小时，再拆成「天 + 小时」，避免恰好 N 天的有效期因为几毫秒误差
+     * 被算成 N-1 天（发布后立刻调用时会剩余 N 天差几毫秒）。四舍五入的误差不超过 30 分钟。</p>
+     *
+     * @param expiresAt 失效时间的 Unix 毫秒值；{@code null} 表示永久地址或未知
+     * @return 形如 {@code 7 days}、{@code 1 day 3 hours}、{@code 5 hours} 的描述；
+     * 已过期返回 {@code expired}；入参为 {@code null} 时返回 {@code null}，表示不输出该行
+     */
+    private static String formatValidity(Long expiresAt) {
+        if (expiresAt == null) {
+            return null;
+        }
+        long remaining = expiresAt - System.currentTimeMillis();
+        if (remaining <= 0) {
+            return "expired";
+        }
+        long hours = Math.round(remaining / 3600000.0);
+        if (hours <= 0) {
+            return "less than 1 hour";
+        }
+        long days = hours / 24;
+        long restHours = hours % 24;
+        if (days == 0) {
+            return hours == 1 ? "1 hour" : hours + " hours";
+        }
+        String dayPart = days == 1 ? "1 day" : days + " days";
+        if (restHours == 0) {
+            return dayPart;
+        }
+        return dayPart + " " + (restHours == 1 ? "1 hour" : restHours + " hours");
     }
 }
