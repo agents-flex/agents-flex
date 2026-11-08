@@ -16,6 +16,7 @@
 package com.agentsflex.subagent;
 
 import com.agentsflex.core.util.Metadata;
+import com.agentsflex.core.util.XmlUtil;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -56,11 +57,12 @@ public class SubagentDefinition extends Metadata {
             : this.frontMatter
             .entrySet()
             .stream()
-            .map(e -> String.format("  <%s>%s</%s>", e.getKey(), e.getValue(), e.getKey()))
+            .map(e -> String.format("  <%s>%s</%s>",
+                e.getKey(), XmlUtil.escapeXml(e.getValue()), e.getKey()))
             .collect(Collectors.joining("\n")) + "\n";
 
         return String.format("\t<task_agent>\n\t\t<name>%s</name>\n\t\t<description>%s</description>\n%s\t</task_agent>"
-            , name, description, frontMatterXml);
+            , XmlUtil.escapeXml(name), XmlUtil.escapeXml(description), frontMatterXml);
     }
 
     public static Builder builder() {

@@ -15,6 +15,8 @@
  */
 package com.agentsflex.skill;
 
+import com.agentsflex.core.util.XmlUtil;
+
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -119,13 +121,18 @@ public class Skill {
      * <p>这里只暴露名称、描述等元数据，不包含完整指令正文和脚本内容，用于实现
      * Skills 的渐进式披露：模型先选择 Skill，调用后才获得完整正文。</p>
      *
+     * <p>front matter 的值来自 {@code SKILL.md} 原文，{@code &}、{@code <} 这类字符
+     * 在 XML 中有语法含义，因此必须转义后再拼接，否则摘要会变成不可解析的 XML，
+     * 或者让描述内容提前闭合标签。</p>
+     *
      * @return {@code <skill>...</skill>} 格式的元数据摘要
      */
     public String toXml() {
         String frontMatterXml = this.frontMatter
             .entrySet()
             .stream()
-            .map(e -> String.format("  <%s>%s</%s>", e.getKey(), e.getValue(), e.getKey()))
+            .map(e -> String.format("  <%s>%s</%s>",
+                e.getKey(), XmlUtil.escapeXml(e.getValue()), e.getKey()))
             .collect(Collectors.joining("\n"));
 
         return String.format("<skill>\n%s\n</skill>", frontMatterXml);
