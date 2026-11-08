@@ -55,7 +55,9 @@ public class Value implements Operand {
     /** 委托适配器按所属条件类型渲染当前值。 */
     public String toExpression(ExpressionAdaptor adaptor) {
         if (value instanceof Operand) {
-            return adaptor.toRight(this);
+            // 值本身就是一个可渲染操作数（例如字段引用）时，应交给适配器渲染该操作数；
+            // 把当前 Value 再传给 toRight 会让适配器回到本方法，形成无限递归。
+            return adaptor.toRight((Operand) value);
         }
         return adaptor.toValue(condition, value);
     }
