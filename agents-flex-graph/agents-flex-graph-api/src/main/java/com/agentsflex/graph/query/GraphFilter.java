@@ -301,10 +301,16 @@ public final class GraphFilter {
     }
 
     /**
-     * 校验 IN、NOT_IN、BETWEEN 所需的集合形态。
+     * 校验 IN、NOT_IN、BETWEEN 所需的集合形态，并拒绝比较运算符上的 null 值。
      */
     private static void validateValue(Operator operator, Object value) {
         if (operator == Operator.IS_NULL || operator == Operator.IS_NOT_NULL) return;
+        if (value == null) {
+            // 空值比较在 Cypher 和 nGQL 中都只产生 null，滤掉全部行且不报错；
+            // 调用方真正想要的是 IS NULL / IS NOT NULL，直接构造只会得到静默空结果。
+            throw new IllegalArgumentException(operator + " requires a non-null value; use IS NULL / IS NOT NULL"
+                + " (GraphFilter.isNull / isNotNull) to test for a missing property");
+        }
         if (operator == Operator.IN || operator == Operator.NOT_IN || operator == Operator.BETWEEN) {
             int size = collectionSize(value);
             int expected = operator == Operator.BETWEEN ? 2 : 1;

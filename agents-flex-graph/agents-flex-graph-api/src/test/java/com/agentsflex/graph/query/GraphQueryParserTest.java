@@ -273,6 +273,13 @@ public class GraphQueryParserTest {
             .getProjections().get(0).getAlias());
     }
 
+    @Test
+    public void shouldRejectNullLiteralInComparisonInsteadOfSilentlyMatchingNothing() {
+        // "= NULL" 在两个后端都恒为 null，过滤后必然得到空结果，不会报任何错误。
+        assertParseFailure("MATCH (p:Person) WHERE p.name = null RETURN p", "IS NULL");
+        assertParseFailure("MATCH (p:Person) WHERE p.name <> null RETURN p", "IS NOT NULL");
+    }
+
     private static void assertParseFailure(String expression, String message) {
         try {
             GraphQueryParser.parse(expression);
