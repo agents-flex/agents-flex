@@ -234,14 +234,16 @@ public class Condition implements Operand {
 
     @Override
     public String toString() {
+        // prev 和 next 是相互引用的双向链表指针，直接拼接邻居会让两个节点在 toString 之间无限递归，
+        // 因此这里只输出是否还有邻居；查看整条链请使用 toExpression。
         return "Condition{" +
             "type=" + type +
             ", left=" + left +
             ", right=" + right +
             ", effective=" + effective +
             ", connector=" + connector +
-            ", prev=" + prev +
-            ", next=" + next +
+            ", hasPrev=" + (prev != null) +
+            ", hasNext=" + (next != null) +
             '}';
     }
 }
