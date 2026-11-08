@@ -85,7 +85,7 @@ public class McpTool implements Tool {
             //  "description" -> "URL of the file to include in the zip"
             @SuppressWarnings("unchecked") Map<String, Object> entryValue = (Map<String, Object>) entry.getValue();
 
-            parameter.setType((String) entryValue.get("type"));
+            parameter.setType(readType(entryValue));
             parameter.setDescription((String) entryValue.get("description"));
             parameter.setDefaultValue(entryValue.get("default"));
 
@@ -93,15 +93,51 @@ public class McpTool implements Tool {
                 parameter.setRequired(true);
             }
 
-            Object anEnum = entryValue.get("enum");
-            if (anEnum instanceof Collection<?>) {
-                parameter.setEnums(((Collection<?>) anEnum).toArray(new String[0]));
-            }
+            parameter.setEnums(readEnums(entryValue.get("enum")));
 
             parameters[i++] = parameter;
         }
 
         return parameters;
+    }
+
+    /**
+     * 读取声明中的 {@code type}。
+     *
+     * <p>JSON Schema 允许把 {@code type} 写成数组表示联合类型，例如
+     * {@code ["string", "null"]}。{@link Parameter} 只表达单一类型，这里取第一个具体类型，
+     * {@code "null"} 分支忽略；只有 {@code "null"} 时返回 {@code null}。</p>
+     */
+    private static String readType(Map<String, Object> schema) {
+        Object value = schema.get("type");
+        if (value instanceof Collection<?>) {
+            for (Object candidate : (Collection<?>) value) {
+                if (candidate != null && !"null".equals(String.valueOf(candidate))) {
+                    return String.valueOf(candidate);
+                }
+            }
+            return null;
+        }
+        return value == null ? null : String.valueOf(value);
+    }
+
+    /**
+     * 读取声明中的 {@code enum}。
+     *
+     * <p>枚举值不限于字符串，{@code {"type": "integer", "enum": [1, 2, 3]}} 同样合法，
+     * 而 {@link Parameter} 只保存字符串，因此统一转成字符串。</p>
+     */
+    private static String[] readEnums(Object value) {
+        if (!(value instanceof Collection<?>)) {
+            return null;
+        }
+        Collection<?> values = (Collection<?>) value;
+        String[] enums = new String[values.size()];
+        int index = 0;
+        for (Object element : values) {
+            enums[index++] = element == null ? null : String.valueOf(element);
+        }
+        return enums;
     }
 
     @Override
