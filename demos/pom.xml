@@ -23,6 +23,7 @@
         <module>websearch-demo</module>
         <module>agent-demo</module>
         <module>agent-console-demo</module>
+        <module>mcp-demo</module>
     </modules>
 
     <properties>

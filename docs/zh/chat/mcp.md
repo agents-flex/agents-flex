@@ -170,6 +170,21 @@ java -Dmcp.input.api-token=... -jar app.jar
 
 只配置 `url` 且没有类型时，`getTransportOrType()` 会选择 `http`。
 
+公开的远程服务也按同样方式配置。例如 [deed.page](https://deed.page)（静态网页托管，无需账号或 API Key）可以把 Agent 生成的 HTML 发布为公开 URL：
+
+```json
+{
+  "mcpServers": {
+    "deed-page": {
+      "transport": "http-stream",
+      "url": "https://deed.page/mcp"
+    }
+  }
+}
+```
+
+`demos/mcp-demo` 演示了不经过模型、直接调用 `publish_site` 和 `delete_site`：默认发布的页面 10 分钟后过期，演示结束时会删除。发布的页面是公开的，不要发布敏感内容。
+
 ## 生命周期
 
 `McpClientManager` 是进程内单例：
