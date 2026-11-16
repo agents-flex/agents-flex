@@ -107,7 +107,9 @@ public class MergedTableFileIntegrationTest {
             assertTrue(hybrid.contains("## 区域概览"));
             assertEquals("2", parsed.selectFirst("th:contains(区域)").attr("rowspan"));
             assertEquals("2", parsed.selectFirst("th:contains(指标)").attr("colspan"));
-            assertEquals(3, parsed.select("table > tbody > tr").size());
+            assertEquals(4, parsed.select("table > tbody > tr").size());
+            assertEquals(3, parsed.select("body > table > tbody > tr").size());
+            assertEquals("20", parsed.selectFirst("table table td").text());
             assertTrue(hybrid.endsWith("完成。"));
         } finally {
             Files.deleteIfExists(file);

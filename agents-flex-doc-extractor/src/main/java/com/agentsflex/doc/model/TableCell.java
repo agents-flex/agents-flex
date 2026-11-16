@@ -1,5 +1,9 @@
 package com.agentsflex.doc.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * 表格中的一个锚点单元格。
  *
@@ -8,9 +12,9 @@ package com.agentsflex.doc.model;
  */
 public final class TableCell {
     /**
-     * 单元格的纯文本内容；构造时会将 {@code null} 规范为空字符串。
+     * 单元格内按源文档顺序保存的块级内容，可包含段落、图片、列表和嵌套表格。
      */
-    private final String text;
+    private final List<DocumentBlock> content;
 
     /**
      * 单元格锚点所在的零基逻辑列索引。
@@ -44,7 +48,25 @@ public final class TableCell {
      * @param header      是否为表头单元格
      */
     public TableCell(String text, int columnIndex, int rowSpan, int colSpan, boolean header) {
-        this.text = text == null ? "" : text;
+        this(text == null || text.isEmpty()
+                ? Collections.<DocumentBlock>emptyList()
+                : Collections.<DocumentBlock>singletonList(new ParagraphBlock(text)),
+            columnIndex, rowSpan, colSpan, header);
+    }
+
+    /**
+     * 使用结构化块创建表格单元格。
+     *
+     * @param content     单元格块级内容，可包含多个段落、图片或嵌套表格
+     * @param columnIndex 零基逻辑列索引
+     * @param rowSpan     纵向覆盖行数
+     * @param colSpan     横向覆盖列数
+     * @param header      是否为表头单元格
+     */
+    public TableCell(List<DocumentBlock> content, int columnIndex, int rowSpan,
+                     int colSpan, boolean header) {
+        this.content = content == null ? Collections.<DocumentBlock>emptyList()
+            : Collections.unmodifiableList(new ArrayList<>(content));
         this.columnIndex = Math.max(0, columnIndex);
         this.rowSpan = Math.max(1, rowSpan);
         this.colSpan = Math.max(1, colSpan);
@@ -52,12 +74,44 @@ public final class TableCell {
     }
 
     /**
-     * 获取单元格文本。
+     * 获取单元格内容的兼容纯文本表示。
      *
-     * @return 非 {@code null} 的单元格文本
+     * <p>该方法供旧调用方和无法表达复杂结构的 Markdown 表格降级使用；需要保留完整结构时
+     * 应调用 {@link #getContent()}。</p>
+     *
+     * @return 非 {@code null} 的兼容纯文本
      */
     public String getText() {
-        return text;
+        StringBuilder text = new StringBuilder();
+        for (DocumentBlock block : content) {
+            String value = plainText(block);
+            if (value.isEmpty()) continue;
+            if (text.length() > 0) text.append('\n');
+            text.append(value);
+        }
+        return text.toString();
+    }
+
+    /**
+     * 获取单元格内的结构化块。
+     *
+     * @return 不可修改的块列表
+     */
+    public List<DocumentBlock> getContent() {
+        return content;
+    }
+
+    /**
+     * 将一个块降级为纯文本，供旧接口和 Markdown 表格使用。
+     */
+    private String plainText(DocumentBlock block) {
+        if (block instanceof ParagraphBlock) return ((ParagraphBlock) block).getPlainText();
+        if (block instanceof HeadingBlock) return ((HeadingBlock) block).getPlainText();
+        if (block instanceof ImageBlock) return ((ImageBlock) block).getAltText();
+        if (block instanceof CodeBlock) return ((CodeBlock) block).getCode();
+        if (block instanceof TextBlock) return ((TextBlock) block).getText();
+        if (block instanceof SectionBlock) return ((SectionBlock) block).getTitle();
+        return "";
     }
 
     /**

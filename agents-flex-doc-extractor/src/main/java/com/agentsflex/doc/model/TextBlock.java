@@ -5,7 +5,10 @@ package com.agentsflex.doc.model;
  *
  * <p>该模型保存文本的语义类型，而不是预先绑定某一种输出格式；不同渲染器可将
  * 同一文本块分别转换为 Markdown 标记或 HTML 元素。</p>
+ *
+ * @deprecated 请使用 {@link ParagraphBlock}、{@link HeadingBlock}、{@link ListBlock} 等语义明确的块模型。
  */
+@Deprecated
 public final class TextBlock implements DocumentBlock {
     /**
      * 文本块的语义类型。

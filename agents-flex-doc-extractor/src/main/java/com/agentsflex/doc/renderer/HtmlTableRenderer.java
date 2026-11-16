@@ -5,18 +5,33 @@ import com.agentsflex.doc.model.TableCell;
 import com.agentsflex.doc.model.TableRow;
 
 /**
- * HTML 表格渲染器。
- *
- * <p>渲染结果使用 {@code table/tbody/tr/th/td} 标签，并仅在跨度大于 1 时输出
- * {@code rowspan} 或 {@code colspan}。单元格文本会进行 HTML 转义，换行转换为 {@code br}。</p>
+ * 保留单元格合并和单元格内部块结构的 HTML 表格渲染器。
  */
 public final class HtmlTableRenderer {
+    /**
+     * 用于递归渲染单元格内部块的 HTML 渲染器。
+     */
+    private final HtmlDocumentRenderer documentRenderer;
 
     /**
-     * 将结构化表格追加到指定输出缓冲区。
+     * 创建使用默认 HTML 文档渲染器的表格渲染器。
+     */
+    public HtmlTableRenderer() {
+        this(new HtmlDocumentRenderer());
+    }
+
+    /**
+     * 创建指定递归渲染器的表格渲染器。
+     */
+    HtmlTableRenderer(HtmlDocumentRenderer documentRenderer) {
+        this.documentRenderer = documentRenderer;
+    }
+
+    /**
+     * 将结构化表格追加到输出缓冲区。
      *
-     * @param table  待渲染表格，不应为 {@code null}
-     * @param output 目标输出缓冲区，不应为 {@code null}
+     * @param table  表格
+     * @param output 输出缓冲区
      */
     public void render(TableBlock table, StringBuilder output) {
         output.append("<table>\n<tbody>\n");
@@ -25,17 +40,22 @@ public final class HtmlTableRenderer {
             for (TableCell cell : row.getCells()) {
                 String tag = cell.isHeader() ? "th" : "td";
                 output.append('<').append(tag);
-                if (cell.getRowSpan() > 1) {
-                    output.append(" rowspan=\"").append(cell.getRowSpan()).append('"');
-                }
-                if (cell.getColSpan() > 1) {
-                    output.append(" colspan=\"").append(cell.getColSpan()).append('"');
-                }
-                output.append('>').append(RendererSupport.renderCellHtml(cell.getText()))
-                    .append("</").append(tag).append('>');
+                if (cell.getRowSpan() > 1) output.append(" rowspan=\"").append(cell.getRowSpan()).append('"');
+                if (cell.getColSpan() > 1) output.append(" colspan=\"").append(cell.getColSpan()).append('"');
+                output.append('>');
+                documentRenderer.renderBlocks(cell.getContent(), output);
+                trimFinalNewline(output);
+                output.append("</").append(tag).append('>');
             }
             output.append("</tr>\n");
         }
         output.append("</tbody>\n</table>");
+    }
+
+    /**
+     * 删除递归渲染产生的单元格末尾换行。
+     */
+    private void trimFinalNewline(StringBuilder output) {
+        if (output.length() > 0 && output.charAt(output.length() - 1) == '\n') output.deleteCharAt(output.length() - 1);
     }
 }

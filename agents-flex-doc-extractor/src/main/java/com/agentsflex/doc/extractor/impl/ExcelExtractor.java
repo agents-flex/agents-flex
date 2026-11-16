@@ -21,7 +21,9 @@ import com.agentsflex.doc.model.ExtractedDocument;
 import com.agentsflex.doc.model.TableBlock;
 import com.agentsflex.doc.model.TableCell;
 import com.agentsflex.doc.model.TableRow;
-import com.agentsflex.doc.model.TextBlock;
+import com.agentsflex.doc.model.SectionBlock;
+import com.agentsflex.doc.model.SectionType;
+import com.agentsflex.doc.model.ParagraphBlock;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
@@ -32,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -129,10 +130,11 @@ public class ExcelExtractor implements StructuredDocumentExtractor {
             for (int i = 0; i < sheetCount; i++) {
                 Sheet sheet = workbook.getSheetAt(i);
                 String sheetName = sheet.getSheetName();
-                document.addBlock(TextBlock.heading(sheetName, 3));
+                SectionBlock section = new SectionBlock(SectionType.SHEET, sheetName);
                 TableBlock table = extractSheet(sheet, evaluator);
-                if (table.isEmpty()) document.addBlock(TextBlock.rawMarkdown("*Empty Sheet*"));
-                else document.addBlock(table);
+                if (table.isEmpty()) section.addBlock(new ParagraphBlock("*Empty Sheet*"));
+                else section.addBlock(table);
+                document.addBlock(section);
             }
 
         } catch (Exception e) {
