@@ -1,107 +1,64 @@
 package com.agentsflex.doc.renderer;
 
-import com.agentsflex.doc.model.*;
-
-import java.util.List;
+import com.agentsflex.doc.model.DocumentBlock;
+import com.agentsflex.doc.model.ExtractedDocument;
+import com.agentsflex.doc.model.TableBlock;
+import com.agentsflex.doc.model.TextBlock;
 
 /**
- * 将结构化文档渲染为安全的 HTML 文档片段。
+ * 完整 HTML 文档片段渲染器。
  *
- * <p>输出不包含 {@code html/head/body} 外壳。文本和属性会转义，链接与图片地址会进行
- * 协议白名单校验，源文档中的脚本或事件属性不会被透传。</p>
+ * <p>输出内容不包含 {@code html}、{@code head} 和 {@code body} 外壳，便于调用方嵌入现有页面。
+ * 所有文本均经过 HTML 转义；表格由 {@link HtmlTableRenderer} 保留合并单元格。</p>
  */
 public final class HtmlDocumentRenderer implements DocumentRenderer {
+    /**
+     * 专门负责 HTML 表格序列化的渲染器。
+     */
+    private final HtmlTableRenderer tableRenderer = new HtmlTableRenderer();
 
-    /** {@inheritDoc} */
+    /**
+     * 将结构化文档渲染为完整 HTML 片段。
+     *
+     * @param document 待渲染的结构化文档
+     * @return HTML 片段；文档为空时返回空字符串
+     */
     @Override
     public String render(ExtractedDocument document) {
         if (document == null || document.isEmpty()) return "";
         StringBuilder output = new StringBuilder();
-        renderBlocks(document.getBlocks(), output);
+        for (DocumentBlock block : document.getBlocks()) {
+            if (block instanceof TableBlock) tableRenderer.render((TableBlock) block, output);
+            else if (block instanceof TextBlock) renderText((TextBlock) block, output);
+            output.append('\n');
+        }
         return output.toString().trim();
     }
 
     /**
-     * 将多个块追加为 HTML，供表格单元格和章节递归调用。
+     * 将一个文本块渲染为对应的 HTML 元素。
      *
-     * @param blocks 块列表
-     * @param output 输出缓冲区
+     * <p>原始 Markdown 块不会被解释为 HTML，而是作为普通段落转义输出，避免不受信任内容
+     * 注入标签或脚本。</p>
+     *
+     * @param block  文本块
+     * @param output 目标输出缓冲区
      */
-    void renderBlocks(List<DocumentBlock> blocks, StringBuilder output) {
-        if (blocks == null) return;
-        for (DocumentBlock block : blocks) {
-            renderBlock(block, output);
-            output.append('\n');
-        }
-    }
-
-    /** 将单个结构化块追加为 HTML。 */
-    private void renderBlock(DocumentBlock block, StringBuilder output) {
-        if (block instanceof ParagraphBlock) {
-            output.append("<p>").append(RendererSupport.renderHtmlInlines(
-                ((ParagraphBlock) block).getContent())).append("</p>");
-        } else if (block instanceof HeadingBlock) {
-            HeadingBlock heading = (HeadingBlock) block;
-            output.append("<h").append(heading.getLevel()).append('>')
-                .append(RendererSupport.renderHtmlInlines(heading.getContent()))
-                .append("</h").append(heading.getLevel()).append('>');
-        } else if (block instanceof ImageBlock) {
-            ImageBlock image = (ImageBlock) block;
-            RendererSupport.appendHtmlImage(output, image.getSource(), image.getAltText(), image.getTitle());
-        } else if (block instanceof ListBlock) renderList((ListBlock) block, output);
-        else if (block instanceof QuoteBlock) {
-            output.append("<blockquote>\n");
-            renderBlocks(((QuoteBlock) block).getContent(), output);
-            output.append("</blockquote>");
-        } else if (block instanceof CodeBlock) {
-            CodeBlock code = (CodeBlock) block;
-            output.append("<pre><code");
-            if (code.getLanguage() != null && !code.getLanguage().isEmpty()) {
-                output.append(" class=\"language-").append(RendererSupport.escapeHtml(code.getLanguage())).append('"');
-            }
-            output.append('>').append(RendererSupport.escapeHtml(code.getCode())).append("</code></pre>");
-        } else if (block instanceof HorizontalRuleBlock) output.append("<hr>");
-        else if (block instanceof PageBreakBlock) output.append("<div class=\"page-break\"></div>");
-        else if (block instanceof SectionBlock) renderSection((SectionBlock) block, output);
-        else if (block instanceof TableBlock) new HtmlTableRenderer(this).render((TableBlock) block, output);
-        else if (block instanceof TextBlock) renderLegacyText((TextBlock) block, output);
-    }
-
-    /** 渲染列表和嵌套列表。 */
-    private void renderList(ListBlock list, StringBuilder output) {
-        String tag = list.isOrdered() ? "ol" : "ul";
-        output.append('<').append(tag);
-        if (list.isOrdered() && list.getStart() != 1) output.append(" start=\"").append(list.getStart()).append('"');
-        output.append('>');
-        for (ListItem item : list.getItems()) {
-            output.append("<li>");
-            renderBlocks(item.getContent(), output);
-            if (item.getChildren() != null) renderList(item.getChildren(), output);
-            output.append("</li>");
-        }
-        output.append("</").append(tag).append('>');
-    }
-
-    /** 渲染章节容器及其标题。 */
-    private void renderSection(SectionBlock section, StringBuilder output) {
-        output.append("<section data-section-type=\"")
-            .append(section.getType().name().toLowerCase()).append("\">");
-        if (!section.getTitle().isEmpty()) {
-            output.append("<h3>").append(RendererSupport.escapeHtml(section.getTitle())).append("</h3>");
-        }
-        output.append('\n');
-        renderBlocks(section.getContent(), output);
-        output.append("</section>");
-    }
-
-    /** 兼容尚未升级的解析器产生的旧 TextBlock。 */
-    private void renderLegacyText(TextBlock block, StringBuilder output) {
+    private void renderText(TextBlock block, StringBuilder output) {
         String content = RendererSupport.renderCellHtml(block.getText());
-        if (block.getType() == TextBlock.Type.HEADING) {
-            output.append("<h").append(block.getLevel()).append('>').append(content)
-                .append("</h").append(block.getLevel()).append('>');
-        } else if (block.getType() == TextBlock.Type.LIST_ITEM) {
-            output.append("<ul><li>").append(content).append("</li></ul>");
-        } else output.append("<p>").append(content).append("</p>");
+        switch (block.getType()) {
+            case HEADING:
+                output.append("<h").append(block.getLevel()).append('>')
+                    .append(content).append("</h").append(block.getLevel()).append('>');
+                break;
+            case LIST_ITEM:
+                output.append("<ul><li>").append(content).append("</li></ul>");
+                break;
+            case RAW_MARKDOWN:
+            case PARAGRAPH:
+            default:
+                output.append("<p>").append(content).append("</p>");
+                break;
+        }
     }
 }

@@ -1,131 +1,190 @@
 /*
- * Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
- * Licensed under the Apache License, Version 2.0.
+ *  Copyright (c) 2023-2026, Agents-Flex (fuhai999@gmail.com).
+ *  <p>
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  <p>
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  <p>
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package com.agentsflex.doc.extractor.impl;
 
 import com.agentsflex.core.document.DocumentImagePublisher;
 import com.agentsflex.doc.extractor.StructuredDocumentExtractor;
-import com.agentsflex.doc.model.*;
+import com.agentsflex.doc.model.ExtractedDocument;
+import com.agentsflex.doc.model.TableBlock;
+import com.agentsflex.doc.model.TableCell;
+import com.agentsflex.doc.model.TableRow;
+import com.agentsflex.doc.model.TextBlock;
 import com.agentsflex.doc.source.DocumentSource;
 import com.agentsflex.doc.util.EncodingDetectUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 /**
- * 将 HTML/XHTML 文档转换为安全、格式无关的结构化块模型。
- *
- * <p>解析器会清除脚本、样式、导航和广告等噪音节点，并保留标题、段落、行内样式、
- * 链接、图片、列表、引用、代码块、分隔线和可嵌套表格。源 HTML 标签和属性不会直接
- * 进入输出，最终安全策略由模型和渲染器共同保证。</p>
+ * 增强版 HTML 文档提取器
+ * 支持可配置的噪音过滤规则（含中文网站常见广告）
  */
 public class HtmlExtractor implements StructuredDocumentExtractor {
+
     /**
-     * 支持的 MIME 类型。
+     * 支持的 HTML MIME 类型集合。
      */
-    private static final Set<String> SUPPORTED_MIME_TYPES = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList("text/html", "application/xhtml+xml")));
+    private static final Set<String> SUPPORTED_MIME_TYPES;
+
     /**
-     * 支持的文件扩展名。
+     * 支持的 HTML 文件扩展名集合。
      */
-    private static final Set<String> SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(
-        new HashSet<>(Arrays.asList("html", "htm", "xhtml", "mhtml")));
+    private static final Set<String> SUPPORTED_EXTENSIONS;
+
+    static {
+        Set<String> mimeTypes = new HashSet<>();
+        mimeTypes.add("text/html");
+        mimeTypes.add("application/xhtml+xml");
+        SUPPORTED_MIME_TYPES = Collections.unmodifiableSet(mimeTypes);
+
+        Set<String> extensions = new HashSet<>();
+        extensions.add("html");
+        extensions.add("htm");
+        extensions.add("xhtml");
+        extensions.add("mhtml");
+        SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
+    }
+
     /**
-     * 默认噪音选择器。
+     * 默认移除的网页噪音 CSS 选择器，例如脚本、导航、广告和弹窗。
      */
     private static final Set<String> DEFAULT_SELECTORS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-        "script", "style", "noscript", "nav", "header", "footer", "aside", "iframe", "embed",
-        "object", "video", "audio", ".ads", ".advertisement", ".sidebar", ".breadcrumb",
-        ".pagination", ".share", ".social", ".cookie", ".consent", ".popup", "[data-ad]",
-        "[data-testid*='ad']", "[data-type='advertisement']"
+        "script", "style", "noscript",
+        "nav", "header", "footer", "aside",
+        "iframe", "embed", "object", "video", "audio",
+        ".ads", ".advertisement", ".ad-", "ad:",
+        ".sidebar", ".sider", ".widget", ".module",
+        ".breadcrumb", ".pager", ".pagination",
+        ".share", ".social", ".like", ".subscribe",
+        ".cookie", ".consent", ".banner", ".popup",
+        "[data-ad]", "[data-testid*='ad']", "[data-type='advertisement']"
     )));
+
     /**
-     * 默认噪音 class/id 词。
+     * 用于识别广告、侧栏、推荐、分享和弹窗等噪音节点的 class/id 关键词。
      */
     private static final Set<String> CLASS_KEYWORDS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-        "ad", "ads", "adv", "advertisement", "banner", "sponsor", "sidebar", "widget",
-        "recommend", "related", "share", "social", "subscribe", "cookie", "consent", "popup",
-        "modal", "footer", "nav", "breadcrumb", "pagination"
+        "ad", "adv", "advertisement", "banner", "sponsor",
+        "sidebar", "sider", "widget", "module", "recommend",
+        "related", "similar", "youlike", "hot", "tuijian",
+        "share", "social", "like", "follow", "subscribe",
+        "cookie", "consent", "popup", "modal", "dialog",
+        "footer", "nav", "breadcrumb", "pager", "pagination"
     )));
+
     /**
-     * 运行期自定义噪音选择器。
+     * 对 class/id 进行单词边界匹配的噪音正则表达式。
+     */
+    private static final Pattern ID_CLASS_PATTERN = Pattern.compile("(?i)\\b(" +
+        String.join("|",
+            "ad", "adv", "advertisement", "banner", "sponsor",
+            "sidebar", "sider", "widget", "module", "tuijian",
+            "share", "social", "like", "follow", "subscribe",
+            "cookie", "consent", "popup", "modal", "dialog",
+            "footer", "nav", "breadcrumb", "pager", "pagination"
+        ) + ")\\b"
+    );
+
+    /**
+     * 运行期动态添加的自定义噪音 CSS 选择器。
      */
     private static final Set<String> CUSTOM_SELECTORS = ConcurrentHashMap.newKeySet();
+
     /**
-     * 运行期自定义噪音关键词。
+     * 运行期动态添加的自定义 class/id 噪音关键词。
      */
     private static final Set<String> CUSTOM_CLASS_KEYWORDS = ConcurrentHashMap.newKeySet();
-    /**
-     * 可独立形成文档块的标签。
-     */
-    private static final Set<String> BLOCK_TAGS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-        "p", "div", "section", "article", "main", "h1", "h2", "h3", "h4", "h5", "h6",
-        "ul", "ol", "blockquote", "pre", "table", "hr", "figure"
-    )));
 
     /**
-     * 添加自定义噪音 CSS 选择器。
+     * 添加自定义噪音选择器（CSS 选择器）
      *
-     * @param selector Jsoup 支持的 CSS 选择器；空值会被忽略
+     * @param selector Jsoup 支持的 CSS 选择器
      */
     public static void addCustomSelector(String selector) {
-        if (selector != null && !selector.trim().isEmpty()) CUSTOM_SELECTORS.add(selector.trim());
+        CUSTOM_SELECTORS.add(selector);
     }
 
     /**
-     * 添加自定义 class/id 噪音关键词。
+     * 添加自定义 class/id 关键词
      *
-     * @param keyword 关键词；空值会被忽略
+     * @param keyword 要忽略大小写匹配的关键词
      */
     public static void addCustomKeyword(String keyword) {
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            CUSTOM_CLASS_KEYWORDS.add(keyword.trim().toLowerCase(Locale.ROOT));
-        }
+        CUSTOM_CLASS_KEYWORDS.add(keyword.toLowerCase());
     }
 
     /**
-     * {@inheritDoc}
+     * 判断输入源是否为 HTML、XHTML 或相关文件格式。
+     *
+     * @param source 文档输入源
+     * @return 支持该输入源时返回 {@code true}
      */
     @Override
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
-        if (mimeType != null) {
-            String normalized = mimeType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-            if (SUPPORTED_MIME_TYPES.contains(normalized)) return true;
-        }
         String fileName = source.getFileName();
-        if (fileName == null) return false;
-        String extension = getExtension(fileName);
-        return extension != null && SUPPORTED_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT));
+
+        if (mimeType != null && SUPPORTED_MIME_TYPES.contains(mimeType.toLowerCase())) {
+            return true;
+        }
+
+        if (fileName != null) {
+            String ext = getExtension(fileName);
+            if (ext != null && SUPPORTED_EXTENSIONS.contains(ext.toLowerCase())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * {@inheritDoc}
+     * 将 HTML 文档解析为结构化文档模型。
+     *
+     * <p>解析前会移除已知网页噪音。标题、段落和列表项转换为文本块；表格保留
+     * {@code th/td} 语义及 {@code rowspan/colspan}。源 HTML 不会直接透传。</p>
+     *
+     * @param source                 HTML 文档输入源
+     * @param documentImagePublisher 图片发布器；当前 HTML 解析不发布内嵌图片
+     * @return 结构化文档
+     * @throws IOException 文档读取或 HTML 解析失败
      */
     @Override
     public ExtractedDocument extractDocument(DocumentSource source,
                                              DocumentImagePublisher documentImagePublisher) throws IOException {
-        try (InputStream input = source.openStream()) {
-            String html = EncodingDetectUtil.readToString(input);
-            if (html.trim().isEmpty()) return new ExtractedDocument();
-            Document sourceDocument = Jsoup.parse(html);
-            sourceDocument.outputSettings().prettyPrint(false);
-            Element body = sourceDocument.body();
-            if (body == null) return new ExtractedDocument();
-            removeNoise(body);
+        try (InputStream is = source.openStream()) {
+            String html = EncodingDetectUtil.readToString(is);
+            if (html.trim().isEmpty()) {
+                return new ExtractedDocument();
+            }
+
+            Document doc = Jsoup.parse(html);
+            doc.outputSettings().prettyPrint(false);
 
             ExtractedDocument extracted = new ExtractedDocument();
-            String title = sourceDocument.title().trim();
-            if (!title.isEmpty()) extracted.addBlock(new HeadingBlock(title, 1));
-            for (DocumentBlock block : parseContainerBlocks(body)) extracted.addBlock(block);
+            extractTitle(doc, extracted);
+            extractBodyContent(doc, extracted);
             return extracted;
         } catch (Exception e) {
             throw new IOException("Failed to parse HTML: " + e.getMessage(), e);
@@ -133,228 +192,205 @@ public class HtmlExtractor implements StructuredDocumentExtractor {
     }
 
     /**
-     * 清除默认和自定义噪音节点。
+     * 提取 HTML {@code title} 并作为一级标题追加。
+     *
+     * @param doc       Jsoup 文档
+     * @param extracted 目标结构化文档
      */
-    private void removeNoise(Element body) {
-        List<String> selectors = new ArrayList<>(DEFAULT_SELECTORS);
-        selectors.addAll(CUSTOM_SELECTORS);
-        for (String selector : selectors) {
+    private void extractTitle(Document doc, ExtractedDocument extracted) {
+        Elements titleEl = doc.select("title");
+        if (!titleEl.isEmpty()) {
+            String title = titleEl.first().text().trim();
+            if (!title.isEmpty()) {
+                extracted.addBlock(TextBlock.heading(title, 1));
+            }
+        }
+    }
+
+    /**
+     * 清理网页噪音并按 DOM 顺序提取 body 内容。
+     *
+     * @param doc       Jsoup 文档
+     * @param extracted 目标结构化文档
+     */
+    private void extractBodyContent(Document doc, ExtractedDocument extracted) {
+        Element body = doc.body();
+        if (body == null) return;
+
+        // 1. 移除已知噪音元素（CSS 选择器）
+        removeElementsBySelectors(body);
+
+        // 2. 移除 class/id 包含关键词的元素
+        removeElementsWithKeywords(body);
+
+        // 3. 遍历剩余节点
+        for (Node node : body.childNodes()) {
+            appendNode(node, extracted);
+        }
+    }
+
+    /**
+     * 将单个 DOM 节点转换为一个或多个结构化块。
+     *
+     * <p>容器节点递归处理子节点；遇到表格时整体转换为一个表格块，避免将表格内部文本
+     * 重复提取为普通段落。</p>
+     *
+     * @param node      当前 DOM 节点
+     * @param extracted 目标结构化文档
+     */
+    private void appendNode(Node node, ExtractedDocument extracted) {
+        if (!(node instanceof Element)) {
+            String text = node instanceof org.jsoup.nodes.TextNode
+                ? ((org.jsoup.nodes.TextNode) node).text().trim() : "";
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.paragraph(text));
+            return;
+        }
+        Element element = (Element) node;
+        String tagName = element.tagName().toLowerCase();
+        if (tagName.matches("h[1-6]")) {
+            extracted.addBlock(TextBlock.heading(element.text().trim(),
+                Integer.parseInt(tagName.substring(1))));
+        } else if ("p".equals(tagName)) {
+            String text = element.text().trim();
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.paragraph(text));
+        } else if ("li".equals(tagName)) {
+            String text = element.text().trim();
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.listItem(text));
+        } else if ("table".equals(tagName)) {
+            TableBlock table = extractStructuredTable(element);
+            if (!table.isEmpty()) extracted.addBlock(table);
+        } else {
+            for (Node child : element.childNodes()) appendNode(child, extracted);
+        }
+    }
+
+    /**
+     * 使用 CSS 选择器移除噪音
+     *
+     * @param body HTML body 元素
+     */
+    private void removeElementsBySelectors(Element body) {
+        List<String> allSelectors = new ArrayList<>(DEFAULT_SELECTORS);
+        allSelectors.addAll(CUSTOM_SELECTORS);
+
+        for (String selector : allSelectors) {
             try {
                 body.select(selector).remove();
-            } catch (RuntimeException ignored) { /* 自定义选择器非法时跳过。 */ }
+            } catch (Exception e) {
+                // 忽略无效选择器
+            }
         }
+    }
+
+    /**
+     * 移除 class 或 id 包含关键词的元素
+     *
+     * @param body HTML body 元素
+     */
+    private void removeElementsWithKeywords(Element body) {
+        // 合并默认和自定义关键词
         Set<String> keywords = new HashSet<>(CLASS_KEYWORDS);
         keywords.addAll(CUSTOM_CLASS_KEYWORDS);
-        for (Element element : new ArrayList<>(body.getAllElements())) {
-            if (element == body) continue;
-            if (containsNoiseToken(element.classNames(), element.id(), keywords)) element.remove();
-        }
-    }
 
-    /**
-     * 按 class token 和 id 分词判断节点是否属于噪音。
-     */
-    private boolean containsNoiseToken(Set<String> classes, String id, Set<String> keywords) {
-        for (String value : classes) if (keywords.contains(value.toLowerCase(Locale.ROOT))) return true;
-        if (id != null) {
-            for (String value : id.toLowerCase(Locale.ROOT).split("[^a-z0-9]+")) {
-                if (keywords.contains(value)) return true;
+        // 使用 DFS 遍历所有元素
+        Deque<Element> stack = new ArrayDeque<>();
+        stack.push(body);
+
+        while (!stack.isEmpty()) {
+            Element el = stack.pop();
+
+            // 检查 class 或 id 是否匹配
+            String classes = el.className().toLowerCase();
+            String id = el.id().toLowerCase();
+
+            for (String keyword : keywords) {
+                if (classes.contains(keyword) || id.contains(keyword)) {
+                    el.remove(); // 移除整个元素
+                    break;
+                }
+            }
+
+            // 匹配正则模式
+            if (ID_CLASS_PATTERN.matcher(classes).find() ||
+                ID_CLASS_PATTERN.matcher(id).find()) {
+                el.remove();
+                continue;
+            }
+
+            // 将子元素加入栈
+            for (Element child : el.children()) {
+                stack.push(child);
             }
         }
-        return false;
     }
 
-    /**
-     * 将容器直接子节点转换为块，并将连续行内节点合并为一个段落。
-     */
-    private List<DocumentBlock> parseContainerBlocks(Element container) {
-        List<DocumentBlock> blocks = new ArrayList<>();
-        List<Node> pendingInline = new ArrayList<>();
-        for (Node node : container.childNodes()) {
-            if (node instanceof Element && isBlockElement((Element) node)) {
-                flushInlineParagraph(pendingInline, blocks);
-                appendElementBlock((Element) node, blocks);
-            } else pendingInline.add(node);
-        }
-        flushInlineParagraph(pendingInline, blocks);
-        return blocks;
-    }
 
     /**
-     * 将累积的连续行内节点转换为段落。
+     * 将 HTML 表格转换为保留跨度的结构化表格。
+     *
+     * <p>{@code occupiedThroughRow} 记录上方 {@code rowspan} 在每一逻辑列持续到哪一行。
+     * 处理后续行时会先跳过这些已占用列，从而为新单元格计算正确的逻辑列索引。</p>
+     *
+     * @param table HTML table 元素
+     * @return 结构化表格
      */
-    private void flushInlineParagraph(List<Node> nodes, List<DocumentBlock> blocks) {
-        if (nodes.isEmpty()) return;
-        List<InlineContent> content = parseInlineNodes(nodes, InlineStyle.NONE);
-        if (hasVisibleInline(content)) blocks.add(new ParagraphBlock(content));
-        nodes.clear();
-    }
-
-    /**
-     * 判断元素是否应作为块处理。
-     */
-    private boolean isBlockElement(Element element) {
-        return BLOCK_TAGS.contains(element.tagName().toLowerCase(Locale.ROOT));
-    }
-
-    /**
-     * 将一个块级元素追加为对应模型。
-     */
-    private void appendElementBlock(Element element, List<DocumentBlock> blocks) {
-        String tag = element.tagName().toLowerCase(Locale.ROOT);
-        if (tag.matches("h[1-6]")) {
-            List<InlineContent> content = parseInlineNodes(element.childNodes(), InlineStyle.NONE);
-            if (hasVisibleInline(content)) blocks.add(new HeadingBlock(content, Integer.parseInt(tag.substring(1))));
-        } else if ("p".equals(tag)) {
-            List<InlineContent> content = parseInlineNodes(element.childNodes(), InlineStyle.NONE);
-            if (hasVisibleInline(content)) blocks.add(new ParagraphBlock(content));
-        } else if ("ul".equals(tag) || "ol".equals(tag)) blocks.add(parseList(element));
-        else if ("blockquote".equals(tag)) {
-            QuoteBlock quote = new QuoteBlock();
-            for (DocumentBlock block : parseContainerBlocks(element)) quote.addBlock(block);
-            blocks.add(quote);
-        } else if ("pre".equals(tag)) blocks.add(parseCodeBlock(element));
-        else if ("table".equals(tag)) blocks.add(parseTable(element));
-        else if ("hr".equals(tag)) blocks.add(new HorizontalRuleBlock());
-        else if ("figure".equals(tag)) appendFigure(element, blocks);
-        else blocks.addAll(parseContainerBlocks(element));
-    }
-
-    /**
-     * 将 figure 中的图片和说明转换为块。
-     */
-    private void appendFigure(Element figure, List<DocumentBlock> blocks) {
-        Element image = figure.selectFirst("img");
-        Element caption = figure.selectFirst("figcaption");
-        if (image != null) blocks.add(new ImageBlock(image.attr("src"), image.attr("alt"), image.attr("title")));
-        if (caption != null) {
-            List<InlineContent> content = parseInlineNodes(caption.childNodes(), InlineStyle.NONE);
-            if (hasVisibleInline(content)) blocks.add(new ParagraphBlock(content));
-        }
-    }
-
-    /**
-     * 解析有序或无序列表及其嵌套列表。
-     */
-    private ListBlock parseList(Element listElement) {
-        boolean ordered = "ol".equalsIgnoreCase(listElement.tagName());
-        int start = positiveInt(listElement.attr("start"));
-        ListBlock list = new ListBlock(ordered, start);
-        for (Element child : listElement.children()) {
-            if (!"li".equalsIgnoreCase(child.tagName())) continue;
-            ListItem item = new ListItem();
-            List<Node> ownNodes = new ArrayList<>();
-            for (Node node : child.childNodes()) {
-                if (node instanceof Element && ("ul".equalsIgnoreCase(((Element) node).tagName())
-                    || "ol".equalsIgnoreCase(((Element) node).tagName()))) {
-                    item.setChildren(parseList((Element) node));
-                } else ownNodes.add(node);
-            }
-            Element wrapper = new Element("div");
-            for (Node node : ownNodes) wrapper.appendChild(node.clone());
-            List<DocumentBlock> itemBlocks = parseContainerBlocks(wrapper);
-            for (DocumentBlock block : itemBlocks) item.addBlock(block);
-            list.addItem(item);
-        }
-        return list;
-    }
-
-    /**
-     * 解析 pre/code 元素并提取可选语言。
-     */
-    private CodeBlock parseCodeBlock(Element pre) {
-        Element code = pre.selectFirst("code");
-        Element source = code == null ? pre : code;
-        String language = null;
-        for (String className : source.classNames()) {
-            if (className.startsWith("language-")) language = className.substring("language-".length());
-        }
-        return new CodeBlock(source.wholeText(), language);
-    }
-
-    /**
-     * 将 HTML 表格转换为保留合并和嵌套内容的结构化表格。
-     */
-    private TableBlock parseTable(Element table) {
+    private TableBlock extractStructuredTable(Element table) {
         TableBlock result = new TableBlock();
         Map<Integer, Integer> occupiedThroughRow = new HashMap<>();
-        List<Element> rows = directRows(table);
-        for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
-            TableRow row = new TableRow();
+        List<Element> sourceRows = directRows(table);
+        for (int rowIndex = 0; rowIndex < sourceRows.size(); rowIndex++) {
+            Element row = sourceRows.get(rowIndex);
+            TableRow tableRow = new TableRow();
             int columnIndex = 0;
-            for (Element cell : rows.get(rowIndex).children()) {
-                if (!"td".equalsIgnoreCase(cell.tagName()) && !"th".equalsIgnoreCase(cell.tagName())) continue;
+            for (Element cell : row.children()) {
+                if (!"td".equalsIgnoreCase(cell.tagName())
+                    && !"th".equalsIgnoreCase(cell.tagName())) continue;
                 while (occupiedThroughRow.containsKey(columnIndex)
                     && occupiedThroughRow.get(columnIndex) >= rowIndex) columnIndex++;
                 int rowSpan = positiveInt(cell.attr("rowspan"));
                 int colSpan = positiveInt(cell.attr("colspan"));
-                row.addCell(new TableCell(parseContainerBlocks(cell), columnIndex, rowSpan, colSpan,
-                    "th".equalsIgnoreCase(cell.tagName())));
-                if (rowSpan > 1) for (int column = columnIndex; column < columnIndex + colSpan; column++) {
-                    occupiedThroughRow.put(column, rowIndex + rowSpan - 1);
+                tableRow.addCell(new TableCell(cell.text().trim(), columnIndex,
+                    rowSpan, colSpan, "th".equalsIgnoreCase(cell.tagName())));
+                if (rowSpan > 1) {
+                    for (int column = columnIndex; column < columnIndex + colSpan; column++) {
+                        occupiedThroughRow.put(column, rowIndex + rowSpan - 1);
+                    }
                 }
                 columnIndex += colSpan;
             }
-            if (!row.getCells().isEmpty()) result.addRow(row);
+            if (!tableRow.getCells().isEmpty()) result.addRow(tableRow);
         }
         return result;
     }
 
     /**
-     * 获取当前表格拥有的行，排除嵌套表格行。
+     * 获取属于当前表格的直接行，排除嵌套表格中的行。
+     *
+     * <p>支持行直接位于 {@code table} 下，也支持位于 {@code thead/tbody/tfoot} 下。</p>
+     *
+     * @param table HTML table 元素
+     * @return 按 DOM 顺序排列的直接表格行
      */
     private List<Element> directRows(Element table) {
         List<Element> rows = new ArrayList<>();
         for (Element child : table.children()) {
             if ("tr".equalsIgnoreCase(child.tagName())) rows.add(child);
-            else if ("thead".equalsIgnoreCase(child.tagName()) || "tbody".equalsIgnoreCase(child.tagName())
+            else if ("thead".equalsIgnoreCase(child.tagName())
+                || "tbody".equalsIgnoreCase(child.tagName())
                 || "tfoot".equalsIgnoreCase(child.tagName())) {
-                for (Element row : child.children()) if ("tr".equalsIgnoreCase(row.tagName())) rows.add(row);
+                for (Element row : child.children()) {
+                    if ("tr".equalsIgnoreCase(row.tagName())) rows.add(row);
+                }
             }
         }
         return rows;
     }
 
     /**
-     * 递归解析行内节点及继承样式。
-     */
-    private List<InlineContent> parseInlineNodes(List<Node> nodes, InlineStyle inherited) {
-        List<InlineContent> content = new ArrayList<>();
-        for (Node node : nodes) {
-            if (node instanceof TextNode) {
-                String text = ((TextNode) node).getWholeText();
-                if (!text.isEmpty()) content.add(inherited.styled(text));
-                continue;
-            }
-            if (!(node instanceof Element)) continue;
-            Element element = (Element) node;
-            String tag = element.tagName().toLowerCase(Locale.ROOT);
-            if ("br".equals(tag)) content.add(new LineBreakInline());
-            else if ("img".equals(tag)) content.add(new ImageInline(
-                element.attr("src"), element.attr("alt"), element.attr("title")));
-            else if ("a".equals(tag)) content.add(new LinkInline(
-                parseInlineNodes(element.childNodes(), inherited), element.attr("href"), element.attr("title")));
-            else {
-                InlineStyle style = inherited.with(tag);
-                content.addAll(parseInlineNodes(element.childNodes(), style));
-            }
-        }
-        return content;
-    }
-
-    /**
-     * 判断行内列表是否包含可见文本、换行或图片。
-     */
-    private boolean hasVisibleInline(List<InlineContent> content) {
-        for (InlineContent inline : content) {
-            if (inline instanceof ImageInline || inline instanceof LineBreakInline) return true;
-            if (!inline.getPlainText().trim().isEmpty()) return true;
-        }
-        return false;
-    }
-
-    /**
-     * 将属性解析为正整数。
+     * 将 HTML 跨度属性解析为正整数。
+     *
+     * @param value {@code rowspan} 或 {@code colspan} 属性值
+     * @return 合法正整数；缺失、非法或非正数时返回 1
      */
     private int positiveInt(String value) {
         try {
@@ -364,65 +400,15 @@ public class HtmlExtractor implements StructuredDocumentExtractor {
         }
     }
 
+
     /**
-     * {@inheritDoc}
+     * 返回解析器优先级。
+     *
+     * @return 优先级 12，使专用 HTML 解析器优先于通用 Tika 解析器
      */
     @Override
     public int getOrder() {
         return 12;
     }
 
-    /**
-     * HTML 行内样式继承状态。
-     */
-    private static final class InlineStyle {
-        /**
-         * 无样式初始状态。
-         */
-        private static final InlineStyle NONE = new InlineStyle(false, false, false, false);
-        /**
-         * 是否加粗。
-         */
-        private final boolean bold;
-        /**
-         * 是否斜体。
-         */
-        private final boolean italic;
-        /**
-         * 是否删除线。
-         */
-        private final boolean strike;
-        /**
-         * 是否行内代码。
-         */
-        private final boolean code;
-
-        /**
-         * 创建不可变样式状态。
-         */
-        private InlineStyle(boolean bold, boolean italic, boolean strike, boolean code) {
-            this.bold = bold;
-            this.italic = italic;
-            this.strike = strike;
-            this.code = code;
-        }
-
-        /**
-         * 根据 HTML 标签返回继承后的样式。
-         */
-        private InlineStyle with(String tag) {
-            return new InlineStyle(bold || "strong".equals(tag) || "b".equals(tag),
-                italic || "em".equals(tag) || "i".equals(tag),
-                strike || "del".equals(tag) || "s".equals(tag) || "strike".equals(tag),
-                code || "code".equals(tag));
-        }
-
-        /**
-         * 根据当前状态创建普通或带样式文本。
-         */
-        private InlineContent styled(String text) {
-            return bold || italic || strike || code
-                ? new StyledTextInline(text, bold, italic, strike, code) : new TextInline(text);
-        }
-    }
 }

@@ -18,7 +18,11 @@ package com.agentsflex.doc.extractor.impl;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
 import com.agentsflex.doc.extractor.StructuredDocumentExtractor;
 import com.agentsflex.core.document.DocumentImagePublisher;
-import com.agentsflex.doc.model.*;
+import com.agentsflex.doc.model.ExtractedDocument;
+import com.agentsflex.doc.model.TableBlock;
+import com.agentsflex.doc.model.TableCell;
+import com.agentsflex.doc.model.TableRow;
+import com.agentsflex.doc.model.TextBlock;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
@@ -26,7 +30,6 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -130,34 +133,16 @@ public class DocxExtractor implements StructuredDocumentExtractor {
         try (InputStream is = source.openStream();
              XWPFDocument document = new XWPFDocument(is)) {
 
-            ListBlock currentList = null;
-            BigInteger currentListId = null;
-            // 按文档中的原始顺序提取段落和表格，并合并连续列表段落。
+            // 按文档中的原始顺序提取段落和表格
             for (IBodyElement bodyElement : document.getBodyElements()) {
                 if (bodyElement instanceof XWPFParagraph) {
-                    XWPFParagraph paragraph = (XWPFParagraph) bodyElement;
-                    DocumentBlock block = extractParagraphBlock(paragraph, document,
-                        documentImagePublisher);
-                    if (block == null) continue;
-                    if (paragraph.getNumID() != null) {
-                        boolean ordered = isOrderedList(paragraph, document);
-                        if (currentList == null || !paragraph.getNumID().equals(currentListId)
-                            || currentList.isOrdered() != ordered) {
-                            currentList = new ListBlock(ordered);
-                            currentListId = paragraph.getNumID();
-                            extracted.addBlock(currentList);
-                        }
-                        currentList.addItem(new ListItem().addBlock(block));
-                    } else {
-                        currentList = null;
-                        currentListId = null;
-                        extracted.addBlock(block);
+                    String paragraphText = getParagraphText((XWPFParagraph) bodyElement, documentImagePublisher);
+                    if (paragraphText != null && !paragraphText.trim().isEmpty()) {
+                        extracted.addBlock(TextBlock.paragraph(paragraphText));
                     }
                 } else if (bodyElement instanceof XWPFTable) {
-                    currentList = null;
-                    currentListId = null;
                     TableBlock table = extractStructuredTable((XWPFTable) bodyElement,
-                        document, documentImagePublisher);
+                        documentImagePublisher);
                     if (!table.isEmpty()) extracted.addBlock(table);
                 }
             }
@@ -177,80 +162,31 @@ public class DocxExtractor implements StructuredDocumentExtractor {
      * @return 段落内容；完全为空时返回 {@code null}
      * @throws IOException 图片发布失败
      */
-    private DocumentBlock extractParagraphBlock(XWPFParagraph paragraph, XWPFDocument document,
-                                                DocumentImagePublisher documentImagePublisher) throws IOException {
-        List<InlineContent> content = new java.util.ArrayList<>();
+    private String getParagraphText(XWPFParagraph paragraph, DocumentImagePublisher documentImagePublisher) throws IOException {
+        StringBuilder text = new StringBuilder();
+
+        // 1. 提取普通文本 Run
         for (XWPFRun run : paragraph.getRuns()) {
             String runText = run.text();
-            if (runText != null && !runText.isEmpty()) {
-                InlineContent textInline = createRunInline(run, runText);
-                if (run instanceof XWPFHyperlinkRun) {
-                    XWPFHyperlink hyperlink = document.getHyperlinkByID(((XWPFHyperlinkRun) run).getHyperlinkId());
-                    if (hyperlink != null) {
-                        textInline = new LinkInline(Collections.singletonList(textInline),
-                            hyperlink.getURL(), null);
-                    }
-                }
-                content.add(textInline);
+            if (runText != null) {
+                text.append(runText);
             }
+
+            // 2. 提取图片 (Inline Images)
+            // XWPFRun 可能包含多个图片，虽然常见是一个
             List<XWPFPicture> pictures = run.getEmbeddedPictures();
             if (pictures != null && !pictures.isEmpty()) {
                 for (XWPFPicture picture : pictures) {
                     String imageUrl = processImage(picture, documentImagePublisher);
-                    if (imageUrl != null && !imageUrl.isEmpty()) {
-                        content.add(new ImageInline(imageUrl, "Image", null));
-                    }
+                    MarkdownFormatter.appendImage(text, imageUrl);
                 }
             }
         }
-        if (content.isEmpty()) return null;
-        int headingLevel = headingLevel(paragraph);
-        return headingLevel > 0 ? new HeadingBlock(content, headingLevel) : new ParagraphBlock(content);
-    }
 
-    /**
-     * 将 Word run 转换为保留字符样式的行内内容。
-     */
-    private InlineContent createRunInline(XWPFRun run, String text) {
-        boolean code = (run.getFontFamily() != null && run.getFontFamily().toLowerCase(Locale.ROOT).contains("mono"))
-            || (run.getStyle() != null && run.getStyle().toLowerCase(Locale.ROOT).contains("code"));
-        if (run.isBold() || run.isItalic() || run.isStrikeThrough() || code) {
-            return new StyledTextInline(text, run.isBold(), run.isItalic(), run.isStrikeThrough(), code);
-        }
-        return new TextInline(text);
-    }
+        // 注意：有些复杂的图片可能是锚定的 (Anchored)，不在 Run 中，而在 Paragraph 的底层 XML 中
+        // 如果需要更全面的支持，可以解析 paragraph.getCTP()，但通常 getEmbeddedPictures 覆盖了大部分场景
 
-    /**
-     * 根据段落样式识别 Heading 1 至 Heading 6。
-     */
-    private int headingLevel(XWPFParagraph paragraph) {
-        String style = paragraph.getStyle();
-        if (style == null) return 0;
-        String normalized = style.toLowerCase(Locale.ROOT).replace(" ", "");
-        if (normalized.startsWith("heading")) {
-            try {
-                return Math.max(1, Math.min(6, Integer.parseInt(normalized.substring(7))));
-            } catch (NumberFormatException ignored) {
-                return 0;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * 判断编号段落使用数字编号还是项目符号。
-     */
-    private boolean isOrderedList(XWPFParagraph paragraph, XWPFDocument document) {
-        try {
-            XWPFNum num = document.getNumbering().getNum(paragraph.getNumID());
-            BigInteger abstractId = num.getCTNum().getAbstractNumId().getVal();
-            XWPFAbstractNum abstractNum = document.getNumbering().getAbstractNum(abstractId);
-            int level = paragraph.getNumIlvl() == null ? 0 : paragraph.getNumIlvl().intValue();
-            String format = abstractNum.getCTAbstractNum().getLvlArray(level).getNumFmt().getVal().toString();
-            return !"bullet".equalsIgnoreCase(format) && !"none".equalsIgnoreCase(format);
-        } catch (Exception ignored) {
-            return false;
-        }
+        return text.length() > 0 ? text.toString() : null;
     }
 
     /**
@@ -261,24 +197,18 @@ public class DocxExtractor implements StructuredDocumentExtractor {
      * @return 去除首尾空白后的单元格文本
      * @throws IOException 图片发布失败
      */
-    private List<DocumentBlock> getCellContent(XWPFTableCell cell, XWPFDocument document,
-                                               DocumentImagePublisher documentImagePublisher) throws IOException {
-        List<DocumentBlock> content = new java.util.ArrayList<>();
-        for (IBodyElement element : cell.getBodyElements()) {
-            if (element instanceof XWPFParagraph) {
-                XWPFParagraph paragraph = (XWPFParagraph) element;
-                DocumentBlock block = extractParagraphBlock(paragraph, document, documentImagePublisher);
-                if (block != null) {
-                    if (paragraph.getNumID() != null) {
-                        content.add(new ListBlock(isOrderedList(paragraph, document))
-                            .addItem(new ListItem().addBlock(block)));
-                    } else content.add(block);
+    private String getCellText(XWPFTableCell cell, DocumentImagePublisher documentImagePublisher) throws IOException {
+        StringBuilder text = new StringBuilder();
+        for (XWPFParagraph p : cell.getParagraphs()) {
+            String pt = getParagraphText(p, documentImagePublisher);
+            if (pt != null) {
+                if (text.length() > 0) {
+                    text.append(' ');
                 }
-            } else if (element instanceof XWPFTable) {
-                content.add(extractStructuredTable((XWPFTable) element, document, documentImagePublisher));
+                text.append(pt);
             }
         }
-        return content;
+        return text.toString().trim();
     }
 
     /**
@@ -293,7 +223,7 @@ public class DocxExtractor implements StructuredDocumentExtractor {
      * @return 保留横向和纵向合并信息的表格
      * @throws IOException 单元格图片发布失败
      */
-    private TableBlock extractStructuredTable(XWPFTable table, XWPFDocument document,
+    private TableBlock extractStructuredTable(XWPFTable table,
                                               DocumentImagePublisher documentImagePublisher) throws IOException {
         TableBlock result = new TableBlock();
         Map<Integer, TableCell> verticalMerges = new HashMap<>();
@@ -316,7 +246,7 @@ public class DocxExtractor implements StructuredDocumentExtractor {
                 for (int column = logicalColumn; column < logicalColumn + colSpan; column++) {
                     verticalMerges.remove(column);
                 }
-                TableCell cell = new TableCell(getCellContent(sourceCell, document, documentImagePublisher),
+                TableCell cell = new TableCell(getCellText(sourceCell, documentImagePublisher),
                     logicalColumn, 1, colSpan, sourceRow.isRepeatHeader());
                 row.addCell(cell);
                 if (merge == VerticalMerge.RESTART) {
