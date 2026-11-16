@@ -15,8 +15,13 @@
  */
 package com.agentsflex.doc.extractor.impl;
 
-import com.agentsflex.doc.extractor.DocumentExtractor;
-import com.agentsflex.doc.extractor.MarkdownFormatter;
+import com.agentsflex.core.document.DocumentImagePublisher;
+import com.agentsflex.doc.extractor.StructuredDocumentExtractor;
+import com.agentsflex.doc.model.ExtractedDocument;
+import com.agentsflex.doc.model.TableBlock;
+import com.agentsflex.doc.model.TableCell;
+import com.agentsflex.doc.model.TableRow;
+import com.agentsflex.doc.model.TextBlock;
 import com.agentsflex.doc.source.DocumentSource;
 import com.agentsflex.doc.util.EncodingDetectUtil;
 import org.jsoup.Jsoup;
@@ -35,9 +40,16 @@ import java.util.regex.Pattern;
  * 增强版 HTML 文档提取器
  * 支持可配置的噪音过滤规则（含中文网站常见广告）
  */
-public class HtmlExtractor implements DocumentExtractor {
+public class HtmlExtractor implements StructuredDocumentExtractor {
 
+    /**
+     * 支持的 HTML MIME 类型集合。
+     */
     private static final Set<String> SUPPORTED_MIME_TYPES;
+
+    /**
+     * 支持的 HTML 文件扩展名集合。
+     */
     private static final Set<String> SUPPORTED_EXTENSIONS;
 
     static {
@@ -54,7 +66,9 @@ public class HtmlExtractor implements DocumentExtractor {
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
-    // 噪音过滤规则
+    /**
+     * 默认移除的网页噪音 CSS 选择器，例如脚本、导航、广告和弹窗。
+     */
     private static final Set<String> DEFAULT_SELECTORS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
         "script", "style", "noscript",
         "nav", "header", "footer", "aside",
@@ -67,6 +81,9 @@ public class HtmlExtractor implements DocumentExtractor {
         "[data-ad]", "[data-testid*='ad']", "[data-type='advertisement']"
     )));
 
+    /**
+     * 用于识别广告、侧栏、推荐、分享和弹窗等噪音节点的 class/id 关键词。
+     */
     private static final Set<String> CLASS_KEYWORDS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
         "ad", "adv", "advertisement", "banner", "sponsor",
         "sidebar", "sider", "widget", "module", "recommend",
@@ -76,6 +93,9 @@ public class HtmlExtractor implements DocumentExtractor {
         "footer", "nav", "breadcrumb", "pager", "pagination"
     )));
 
+    /**
+     * 对 class/id 进行单词边界匹配的噪音正则表达式。
+     */
     private static final Pattern ID_CLASS_PATTERN = Pattern.compile("(?i)\\b(" +
         String.join("|",
             "ad", "adv", "advertisement", "banner", "sponsor",
@@ -86,12 +106,20 @@ public class HtmlExtractor implements DocumentExtractor {
         ) + ")\\b"
     );
 
-    // 可动态添加的自定义规则
+    /**
+     * 运行期动态添加的自定义噪音 CSS 选择器。
+     */
     private static final Set<String> CUSTOM_SELECTORS = ConcurrentHashMap.newKeySet();
+
+    /**
+     * 运行期动态添加的自定义 class/id 噪音关键词。
+     */
     private static final Set<String> CUSTOM_CLASS_KEYWORDS = ConcurrentHashMap.newKeySet();
 
     /**
      * 添加自定义噪音选择器（CSS 选择器）
+     *
+     * @param selector Jsoup 支持的 CSS 选择器
      */
     public static void addCustomSelector(String selector) {
         CUSTOM_SELECTORS.add(selector);
@@ -99,11 +127,19 @@ public class HtmlExtractor implements DocumentExtractor {
 
     /**
      * 添加自定义 class/id 关键词
+     *
+     * @param keyword 要忽略大小写匹配的关键词
      */
     public static void addCustomKeyword(String keyword) {
         CUSTOM_CLASS_KEYWORDS.add(keyword.toLowerCase());
     }
 
+    /**
+     * 判断输入源是否为 HTML、XHTML 或相关文件格式。
+     *
+     * @param source 文档输入源
+     * @return 支持该输入源时返回 {@code true}
+     */
     @Override
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
@@ -123,39 +159,61 @@ public class HtmlExtractor implements DocumentExtractor {
         return false;
     }
 
+    /**
+     * 将 HTML 文档解析为结构化文档模型。
+     *
+     * <p>解析前会移除已知网页噪音。标题、段落和列表项转换为文本块；表格保留
+     * {@code th/td} 语义及 {@code rowspan/colspan}。源 HTML 不会直接透传。</p>
+     *
+     * @param source                 HTML 文档输入源
+     * @param documentImagePublisher 图片发布器；当前 HTML 解析不发布内嵌图片
+     * @return 结构化文档
+     * @throws IOException 文档读取或 HTML 解析失败
+     */
     @Override
-    public String extractText(DocumentSource source) throws IOException {
+    public ExtractedDocument extractDocument(DocumentSource source,
+                                             DocumentImagePublisher documentImagePublisher) throws IOException {
         try (InputStream is = source.openStream()) {
             String html = EncodingDetectUtil.readToString(is);
             if (html.trim().isEmpty()) {
-                return "";
+                return new ExtractedDocument();
             }
 
             Document doc = Jsoup.parse(html);
             doc.outputSettings().prettyPrint(false);
 
-            StringBuilder text = new StringBuilder();
-
-            extractTitle(doc, text);
-            extractBodyContent(doc, text);
-
-            return text.toString().trim();
+            ExtractedDocument extracted = new ExtractedDocument();
+            extractTitle(doc, extracted);
+            extractBodyContent(doc, extracted);
+            return extracted;
         } catch (Exception e) {
             throw new IOException("Failed to parse HTML: " + e.getMessage(), e);
         }
     }
 
-    private void extractTitle(Document doc, StringBuilder text) {
+    /**
+     * 提取 HTML {@code title} 并作为一级标题追加。
+     *
+     * @param doc       Jsoup 文档
+     * @param extracted 目标结构化文档
+     */
+    private void extractTitle(Document doc, ExtractedDocument extracted) {
         Elements titleEl = doc.select("title");
         if (!titleEl.isEmpty()) {
             String title = titleEl.first().text().trim();
             if (!title.isEmpty()) {
-                text.append(title).append("\n\n");
+                extracted.addBlock(TextBlock.heading(title, 1));
             }
         }
     }
 
-    private void extractBodyContent(Document doc, StringBuilder text) {
+    /**
+     * 清理网页噪音并按 DOM 顺序提取 body 内容。
+     *
+     * @param doc       Jsoup 文档
+     * @param extracted 目标结构化文档
+     */
+    private void extractBodyContent(Document doc, ExtractedDocument extracted) {
         Element body = doc.body();
         if (body == null) return;
 
@@ -167,12 +225,49 @@ public class HtmlExtractor implements DocumentExtractor {
 
         // 3. 遍历剩余节点
         for (Node node : body.childNodes()) {
-            appendNodeText(node, text, 0);
+            appendNode(node, extracted);
+        }
+    }
+
+    /**
+     * 将单个 DOM 节点转换为一个或多个结构化块。
+     *
+     * <p>容器节点递归处理子节点；遇到表格时整体转换为一个表格块，避免将表格内部文本
+     * 重复提取为普通段落。</p>
+     *
+     * @param node      当前 DOM 节点
+     * @param extracted 目标结构化文档
+     */
+    private void appendNode(Node node, ExtractedDocument extracted) {
+        if (!(node instanceof Element)) {
+            String text = node instanceof org.jsoup.nodes.TextNode
+                ? ((org.jsoup.nodes.TextNode) node).text().trim() : "";
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.paragraph(text));
+            return;
+        }
+        Element element = (Element) node;
+        String tagName = element.tagName().toLowerCase();
+        if (tagName.matches("h[1-6]")) {
+            extracted.addBlock(TextBlock.heading(element.text().trim(),
+                Integer.parseInt(tagName.substring(1))));
+        } else if ("p".equals(tagName)) {
+            String text = element.text().trim();
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.paragraph(text));
+        } else if ("li".equals(tagName)) {
+            String text = element.text().trim();
+            if (!text.isEmpty()) extracted.addBlock(TextBlock.listItem(text));
+        } else if ("table".equals(tagName)) {
+            TableBlock table = extractStructuredTable(element);
+            if (!table.isEmpty()) extracted.addBlock(table);
+        } else {
+            for (Node child : element.childNodes()) appendNode(child, extracted);
         }
     }
 
     /**
      * 使用 CSS 选择器移除噪音
+     *
+     * @param body HTML body 元素
      */
     private void removeElementsBySelectors(Element body) {
         List<String> allSelectors = new ArrayList<>(DEFAULT_SELECTORS);
@@ -189,6 +284,8 @@ public class HtmlExtractor implements DocumentExtractor {
 
     /**
      * 移除 class 或 id 包含关键词的元素
+     *
+     * @param body HTML body 元素
      */
     private void removeElementsWithKeywords(Element body) {
         // 合并默认和自定义关键词
@@ -228,98 +325,87 @@ public class HtmlExtractor implements DocumentExtractor {
     }
 
 
-    private String repeat(String string, int times) {
-        if (times <= 0) return "";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < times; i++) {
-            sb.append(string);
-        }
-        return sb.toString();
-    }
-
-    // 节点文本提取
-    private void appendNodeText(Node node, StringBuilder text, int level) {
-        if (node == null) return;
-
-        if (node instanceof org.jsoup.nodes.TextNode) {
-            String txt = ((org.jsoup.nodes.TextNode) node).text().trim();
-            if (!txt.isEmpty()) {
-                text.append(txt).append(" ");
-            }
-        } else if (node instanceof Element) {
-            Element el = (Element) node;
-            String tagName = el.tagName().toLowerCase();
-
-            if (tagName.matches("h[1-6]")) {
-                text.append("\n")
-                    .append(repeat("#", Integer.parseInt(tagName.substring(1))))
-                    .append(" ")
-                    .append(el.text().trim())
-                    .append("\n\n");
-            } else if (tagName.equals("p")) {
-                String paraText = el.text().trim();
-                if (!paraText.isEmpty()) {
-                    text.append(paraText).append("\n\n");
-                }
-            } else if (tagName.equals("li")) {
-                text.append("- ").append(el.text().trim()).append("\n");
-            } else if (tagName.equals("table")) {
-                extractTable(el, text);
-                text.append("\n");
-            } else if (tagName.equals("br")) {
-                text.append("\n");
-            } else if (tagName.equals("a")) {
-                String href = el.attr("href");
-                String textPart = el.text().trim();
-                if (!textPart.isEmpty()) {
-                    text.append(textPart);
-                    if (!href.isEmpty() && !href.equals(textPart)) {
-                        text.append(" [").append(href).append("]");
-                    }
-                    text.append(" ");
-                }
-            } else if (isBlockLevel(tagName)) {
-                text.append("\n");
-                for (Node child : el.childNodes()) {
-                    appendNodeText(child, text, level + 1);
-                }
-                text.append("\n");
-            } else {
-                for (Node child : el.childNodes()) {
-                    appendNodeText(child, text, level + 1);
-                }
-            }
-        }
-    }
-
-    private boolean isBlockLevel(String tagName) {
-        Set<String> blockTags = new HashSet<>(Arrays.asList(
-            "div", "p", "h1", "h2", "h3", "h4", "h5", "h6",
-            "ul", "ol", "li", "table", "tr", "td", "th",
-            "blockquote", "pre", "section", "article", "figure"
-        ));
-        return blockTags.contains(tagName);
-    }
-
-    private void extractTable(Element table, StringBuilder text) {
-        List<List<String>> tableRows = new ArrayList<>();
-        Elements rows = table.select("tr");
-        for (Element row : rows) {
-            List<String> cellTexts = new ArrayList<>();
+    /**
+     * 将 HTML 表格转换为保留跨度的结构化表格。
+     *
+     * <p>{@code occupiedThroughRow} 记录上方 {@code rowspan} 在每一逻辑列持续到哪一行。
+     * 处理后续行时会先跳过这些已占用列，从而为新单元格计算正确的逻辑列索引。</p>
+     *
+     * @param table HTML table 元素
+     * @return 结构化表格
+     */
+    private TableBlock extractStructuredTable(Element table) {
+        TableBlock result = new TableBlock();
+        Map<Integer, Integer> occupiedThroughRow = new HashMap<>();
+        List<Element> sourceRows = directRows(table);
+        for (int rowIndex = 0; rowIndex < sourceRows.size(); rowIndex++) {
+            Element row = sourceRows.get(rowIndex);
+            TableRow tableRow = new TableRow();
+            int columnIndex = 0;
             for (Element cell : row.children()) {
-                if ("td".equalsIgnoreCase(cell.tagName())
-                    || "th".equalsIgnoreCase(cell.tagName())) {
-                    cellTexts.add(cell.text().trim());
+                if (!"td".equalsIgnoreCase(cell.tagName())
+                    && !"th".equalsIgnoreCase(cell.tagName())) continue;
+                while (occupiedThroughRow.containsKey(columnIndex)
+                    && occupiedThroughRow.get(columnIndex) >= rowIndex) columnIndex++;
+                int rowSpan = positiveInt(cell.attr("rowspan"));
+                int colSpan = positiveInt(cell.attr("colspan"));
+                tableRow.addCell(new TableCell(cell.text().trim(), columnIndex,
+                    rowSpan, colSpan, "th".equalsIgnoreCase(cell.tagName())));
+                if (rowSpan > 1) {
+                    for (int column = columnIndex; column < columnIndex + colSpan; column++) {
+                        occupiedThroughRow.put(column, rowIndex + rowSpan - 1);
+                    }
+                }
+                columnIndex += colSpan;
+            }
+            if (!tableRow.getCells().isEmpty()) result.addRow(tableRow);
+        }
+        return result;
+    }
+
+    /**
+     * 获取属于当前表格的直接行，排除嵌套表格中的行。
+     *
+     * <p>支持行直接位于 {@code table} 下，也支持位于 {@code thead/tbody/tfoot} 下。</p>
+     *
+     * @param table HTML table 元素
+     * @return 按 DOM 顺序排列的直接表格行
+     */
+    private List<Element> directRows(Element table) {
+        List<Element> rows = new ArrayList<>();
+        for (Element child : table.children()) {
+            if ("tr".equalsIgnoreCase(child.tagName())) rows.add(child);
+            else if ("thead".equalsIgnoreCase(child.tagName())
+                || "tbody".equalsIgnoreCase(child.tagName())
+                || "tfoot".equalsIgnoreCase(child.tagName())) {
+                for (Element row : child.children()) {
+                    if ("tr".equalsIgnoreCase(row.tagName())) rows.add(row);
                 }
             }
-            if (!cellTexts.isEmpty()) {
-                tableRows.add(cellTexts);
-            }
         }
-        MarkdownFormatter.appendTable(text, tableRows);
+        return rows;
+    }
+
+    /**
+     * 将 HTML 跨度属性解析为正整数。
+     *
+     * @param value {@code rowspan} 或 {@code colspan} 属性值
+     * @return 合法正整数；缺失、非法或非正数时返回 1
+     */
+    private int positiveInt(String value) {
+        try {
+            return Math.max(1, Integer.parseInt(value));
+        } catch (Exception ignored) {
+            return 1;
+        }
     }
 
 
+    /**
+     * 返回解析器优先级。
+     *
+     * @return 优先级 12，使专用 HTML 解析器优先于通用 Tika 解析器
+     */
     @Override
     public int getOrder() {
         return 12;

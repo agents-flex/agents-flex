@@ -15,30 +15,48 @@
  */
 package com.agentsflex.doc.extractor.impl;
 
-import com.agentsflex.doc.extractor.DocumentExtractor;
 import com.agentsflex.doc.extractor.MarkdownFormatter;
-import com.agentsflex.core.document.DataUriDocumentImagePublisher;
+import com.agentsflex.doc.extractor.StructuredDocumentExtractor;
 import com.agentsflex.core.document.DocumentImagePublisher;
+import com.agentsflex.doc.model.ExtractedDocument;
+import com.agentsflex.doc.model.TableBlock;
+import com.agentsflex.doc.model.TableCell;
+import com.agentsflex.doc.model.TableRow;
+import com.agentsflex.doc.model.TextBlock;
 import com.agentsflex.doc.source.DocumentSource;
 import org.apache.poi.xwpf.usermodel.*;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTTcPr;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTVMerge;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * DOCX 文档提取器（.docx, .dotx）
  * 支持段落、表格、列表文本提取，以及嵌入图片处理
  */
-public class DocxExtractor implements DocumentExtractor {
+public class DocxExtractor implements StructuredDocumentExtractor {
 
+    /**
+     * Word Open XML 格式已知的精确 MIME 类型集合。
+     */
     private static final Set<String> KNOWN_MIME_TYPES;
+
+    /**
+     * 用于兼容带参数或变体 MIME 类型的 Open XML Word MIME 前缀。
+     */
     private static final String MIME_PREFIX = "application/vnd.openxmlformats-officedocument.wordprocessingml";
+
+    /**
+     * 支持的 Word Open XML 文件扩展名集合。
+     */
     private static final Set<String> SUPPORTED_EXTENSIONS;
 
     static {
@@ -59,6 +77,14 @@ public class DocxExtractor implements DocumentExtractor {
         SUPPORTED_EXTENSIONS = Collections.unmodifiableSet(extensions);
     }
 
+    /**
+     * 判断输入源是否属于 DOCX、DOTX、DOCM 或 DOTM 格式。
+     *
+     * <p>优先匹配标准化后的 MIME 类型，无法判断时再按文件扩展名匹配。</p>
+     *
+     * @param source 文档输入源
+     * @return 支持该输入源时返回 {@code true}
+     */
     @Override
     public boolean supports(DocumentSource source) {
         String mimeType = source.getMimeType();
@@ -88,14 +114,21 @@ public class DocxExtractor implements DocumentExtractor {
         return false;
     }
 
+    /**
+     * 将 DOCX 文档解析为结构化文档模型。
+     *
+     * <p>正文段落和表格按照 Word 文档中的原始顺序输出。表格横向合并读取
+     * {@code gridSpan}，纵向合并读取 {@code vMerge} 的 restart/continue 标记。</p>
+     *
+     * @param source                 DOCX 文档输入源
+     * @param documentImagePublisher 嵌入图片发布器
+     * @return 结构化文档
+     * @throws IOException 文档读取、解析或图片发布失败
+     */
     @Override
-    public String extractText(DocumentSource source) throws IOException {
-        return extractText(source, new DataUriDocumentImagePublisher());
-    }
-
-    @Override
-    public String extractText(DocumentSource source, DocumentImagePublisher documentImagePublisher) throws IOException {
-        StringBuilder text = new StringBuilder();
+    public ExtractedDocument extractDocument(DocumentSource source,
+                                             DocumentImagePublisher documentImagePublisher) throws IOException {
+        ExtractedDocument extracted = new ExtractedDocument();
 
         try (InputStream is = source.openStream();
              XWPFDocument document = new XWPFDocument(is)) {
@@ -105,10 +138,12 @@ public class DocxExtractor implements DocumentExtractor {
                 if (bodyElement instanceof XWPFParagraph) {
                     String paragraphText = getParagraphText((XWPFParagraph) bodyElement, documentImagePublisher);
                     if (paragraphText != null && !paragraphText.trim().isEmpty()) {
-                        text.append(paragraphText).append('\n');
+                        extracted.addBlock(TextBlock.paragraph(paragraphText));
                     }
                 } else if (bodyElement instanceof XWPFTable) {
-                    extractTable((XWPFTable) bodyElement, text, documentImagePublisher);
+                    TableBlock table = extractStructuredTable((XWPFTable) bodyElement,
+                        documentImagePublisher);
+                    if (!table.isEmpty()) extracted.addBlock(table);
                 }
             }
 
@@ -116,11 +151,16 @@ public class DocxExtractor implements DocumentExtractor {
             throw new IOException("Failed to extract DOCX: " + e.getMessage(), e);
         }
 
-        return text.toString().trim();
+        return extracted;
     }
 
     /**
      * 提取段落文本，包括其中嵌入的图片
+     *
+     * @param paragraph              Word 段落
+     * @param documentImagePublisher 图片发布器
+     * @return 段落内容；完全为空时返回 {@code null}
+     * @throws IOException 图片发布失败
      */
     private String getParagraphText(XWPFParagraph paragraph, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
@@ -151,6 +191,11 @@ public class DocxExtractor implements DocumentExtractor {
 
     /**
      * 提取单元格文本，递归处理段落和图片
+     *
+     * @param cell                   Word 表格单元格
+     * @param documentImagePublisher 图片发布器
+     * @return 去除首尾空白后的单元格文本
+     * @throws IOException 图片发布失败
      */
     private String getCellText(XWPFTableCell cell, DocumentImagePublisher documentImagePublisher) throws IOException {
         StringBuilder text = new StringBuilder();
@@ -166,23 +211,111 @@ public class DocxExtractor implements DocumentExtractor {
         return text.toString().trim();
     }
 
-    private void extractTable(XWPFTable table, StringBuilder text, DocumentImagePublisher documentImagePublisher) throws IOException {
+    /**
+     * 将 Word 表格转换为稀疏结构化表格。
+     *
+     * <p>{@code logicalColumn} 表示考虑横向合并后的逻辑列坐标；纵向合并起始单元格会被
+     * 记录到 {@code verticalMerges}，后续 continue 单元格只增加锚点的 {@code rowSpan}，
+     * 不再生成新的单元格对象。</p>
+     *
+     * @param table                  Word 表格
+     * @param documentImagePublisher 图片发布器
+     * @return 保留横向和纵向合并信息的表格
+     * @throws IOException 单元格图片发布失败
+     */
+    private TableBlock extractStructuredTable(XWPFTable table,
+                                              DocumentImagePublisher documentImagePublisher) throws IOException {
+        TableBlock result = new TableBlock();
+        Map<Integer, TableCell> verticalMerges = new HashMap<>();
         List<XWPFTableRow> rows = table.getRows();
-        if (rows == null || rows.isEmpty()) {
-            return;
-        }
+        if (rows == null) return result;
 
-        List<List<String>> tableRows = new ArrayList<>();
-        for (XWPFTableRow row : rows) {
-            List<String> cells = new ArrayList<>();
-            for (XWPFTableCell cell : row.getTableCells()) {
-                cells.add(getCellText(cell, documentImagePublisher));
+        for (XWPFTableRow sourceRow : rows) {
+            TableRow row = new TableRow();
+            int logicalColumn = 0;
+            for (XWPFTableCell sourceCell : sourceRow.getTableCells()) {
+                int colSpan = getGridSpan(sourceCell);
+                VerticalMerge merge = getVerticalMerge(sourceCell);
+                if (merge == VerticalMerge.CONTINUE) {
+                    TableCell anchor = verticalMerges.get(logicalColumn);
+                    if (anchor != null) anchor.incrementRowSpan();
+                    logicalColumn += colSpan;
+                    continue;
+                }
+
+                for (int column = logicalColumn; column < logicalColumn + colSpan; column++) {
+                    verticalMerges.remove(column);
+                }
+                TableCell cell = new TableCell(getCellText(sourceCell, documentImagePublisher),
+                    logicalColumn, 1, colSpan, sourceRow.isRepeatHeader());
+                row.addCell(cell);
+                if (merge == VerticalMerge.RESTART) {
+                    for (int column = logicalColumn; column < logicalColumn + colSpan; column++) {
+                        verticalMerges.put(column, cell);
+                    }
+                }
+                logicalColumn += colSpan;
             }
-            tableRows.add(cells);
+            result.addRow(row);
         }
-        MarkdownFormatter.appendTable(text, tableRows);
+        return result;
     }
 
+    /**
+     * 读取 Word 单元格的横向网格跨度。
+     *
+     * @param cell Word 单元格
+     * @return {@code gridSpan} 值；未设置或非法时返回 1
+     */
+    private int getGridSpan(XWPFTableCell cell) {
+        CTTcPr properties = cell.getCTTc().getTcPr();
+        if (properties == null || !properties.isSetGridSpan()
+            || properties.getGridSpan().getVal() == null) return 1;
+        return Math.max(1, properties.getGridSpan().getVal().intValue());
+    }
+
+    /**
+     * 解析 Word 单元格的纵向合并状态。
+     *
+     * @param cell Word 单元格
+     * @return 未合并、合并起始或合并继续状态
+     */
+    private VerticalMerge getVerticalMerge(XWPFTableCell cell) {
+        CTTcPr properties = cell.getCTTc().getTcPr();
+        if (properties == null || !properties.isSetVMerge()) return VerticalMerge.NONE;
+        CTVMerge merge = properties.getVMerge();
+        if (merge.getVal() != null && "restart".equalsIgnoreCase(merge.getVal().toString())) {
+            return VerticalMerge.RESTART;
+        }
+        return VerticalMerge.CONTINUE;
+    }
+
+    /**
+     * WordprocessingML 纵向合并标记的内部语义。
+     */
+    private enum VerticalMerge {
+        /**
+         * 单元格未参与纵向合并。
+         */
+        NONE,
+        /**
+         * 单元格是纵向合并区域的起始锚点。
+         */
+        RESTART,
+        /**
+         * 单元格继续上方已经开始的纵向合并。
+         */
+        CONTINUE
+    }
+
+    /**
+     * 发布单个嵌入图片并返回图片地址。
+     *
+     * @param picture                Word 图片对象
+     * @param documentImagePublisher 图片发布器
+     * @return 发布后的图片地址；图片数据为空时返回 {@code null}
+     * @throws IOException 图片读取或发布失败
+     */
     private String processImage(XWPFPicture picture, DocumentImagePublisher documentImagePublisher) throws IOException {
         XWPFPictureData pictureData = picture.getPictureData();
         if (pictureData == null) {
@@ -203,6 +336,11 @@ public class DocxExtractor implements DocumentExtractor {
             pictureData.getFileName());
     }
 
+    /**
+     * 返回解析器优先级。
+     *
+     * @return 优先级 10，确保专用 DOCX 解析器优先于通用 Tika 解析器
+     */
     @Override
     public int getOrder() {
         return 10;
