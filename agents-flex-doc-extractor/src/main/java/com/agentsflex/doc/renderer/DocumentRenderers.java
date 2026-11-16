@@ -19,11 +19,11 @@ public final class DocumentRenderers {
     /**
      * 根据输出格式创建对应渲染器。
      *
-     * @param format 输出格式；传入 {@code null} 时按纯 Markdown 处理
+     * @param format 输出格式；传入 {@code null} 时按 Markdown 正文与 HTML 表格融合格式处理
      * @return 与输出格式对应的渲染器实例
      */
     public static DocumentRenderer forFormat(DocumentOutputFormat format) {
-        if (format == null || format == DocumentOutputFormat.MARKDOWN) return new MarkdownDocumentRenderer();
+        if (format == DocumentOutputFormat.MARKDOWN) return new MarkdownDocumentRenderer();
         if (format == DocumentOutputFormat.HTML) return new HtmlDocumentRenderer();
         return new HybridMarkdownRenderer();
     }

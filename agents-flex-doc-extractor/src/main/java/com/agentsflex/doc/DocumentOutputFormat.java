@@ -4,7 +4,8 @@ package com.agentsflex.doc;
  * 文档提取结果的输出格式。
  *
  * <p>该枚举只影响结构化解析器的最终序列化方式，不改变源文档的解析逻辑。
- * 原有未指定格式的入口始终使用 {@link #MARKDOWN}，以保持向后兼容。</p>
+ * 未指定格式或传入 {@code null} 时默认使用 {@link #MARKDOWN_WITH_HTML_TABLES}，
+ * 使正文保持 Markdown，同时无损保留表格合并信息。</p>
  */
 public enum DocumentOutputFormat {
     /**

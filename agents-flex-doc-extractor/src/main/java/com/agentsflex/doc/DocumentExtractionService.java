@@ -39,6 +39,14 @@ import java.util.stream.Collectors;
  */
 public class DocumentExtractionService {
     /**
+     * 未显式指定输出格式时使用的默认格式。
+     *
+     * <p>正文保持 Markdown，表格使用 HTML，以便默认保留合并单元格。</p>
+     */
+    private static final DocumentOutputFormat DEFAULT_OUTPUT_FORMAT =
+        DocumentOutputFormat.MARKDOWN_WITH_HTML_TABLES;
+
+    /**
      * 当前类使用的日志记录器。
      */
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DocumentExtractionService.class);
@@ -123,7 +131,7 @@ public class DocumentExtractionService {
     }
 
     /**
-     * 从 URL 提取纯 Markdown 内容。
+     * 从 URL 提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param url HTTP、HTTPS 或 file URL
      * @return 提取结果
@@ -133,7 +141,7 @@ public class DocumentExtractionService {
     }
 
     /**
-     * 从 URL 提取纯 Markdown 内容，并显式提供原始文件名。
+     * 从 URL 提取 Markdown 正文与 HTML 表格融合内容，并显式提供原始文件名。
      *
      * @param url      HTTP、HTTPS 或 file URL
      * @param fileName 原始文件名
@@ -150,10 +158,10 @@ public class DocumentExtractionService {
      * @param url      HTTP、HTTPS 或 file URL
      * @param fileName 原始文件名
      * @param mimeType 文档 MIME 类型
-     * @return 纯 Markdown 提取结果
+     * @return Markdown 正文与 HTML 表格融合结果
      */
     public String extractFromUrl(String url, String fileName, String mimeType) {
-        return extractFromUrl(url, fileName, mimeType, DocumentOutputFormat.MARKDOWN);
+        return extractFromUrl(url, fileName, mimeType, DEFAULT_OUTPUT_FORMAT);
     }
 
     /**
@@ -165,7 +173,7 @@ public class DocumentExtractionService {
      * @param url          HTTP、HTTPS 或 file URL
      * @param fileName     原始文件名，可为 {@code null}
      * @param mimeType     文档 MIME 类型，可为 {@code null}
-     * @param outputFormat 输出格式，传入 {@code null} 时使用纯 Markdown
+     * @param outputFormat 输出格式，传入 {@code null} 时使用 Markdown 正文与 HTML 表格融合格式
      * @return 提取结果；没有可用解析器或解析失败时返回 {@code null}
      */
     public String extractFromUrl(String url, String fileName, String mimeType,
@@ -181,7 +189,7 @@ public class DocumentExtractionService {
     }
 
     /**
-     * 从本地文件提取纯 Markdown 内容。
+     * 从本地文件提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param file 本地文档文件
      * @return 提取结果
@@ -222,7 +230,7 @@ public class DocumentExtractionService {
     }
 
     /**
-     * 从输入流提取纯 Markdown 内容。
+     * 从输入流提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param inputStream 文档输入流
      * @param fileName    原始文件名
@@ -250,7 +258,7 @@ public class DocumentExtractionService {
     }
 
     /**
-     * 从字节数组提取纯 Markdown 内容。
+     * 从字节数组提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param bytes    文档二进制内容
      * @param fileName 原始文件名
@@ -301,14 +309,14 @@ public class DocumentExtractionService {
 
 
     /**
-     * 从 DocumentSource 提取 Markdown 风格内容，支持多个格式提取器降级重试。
+     * 从 DocumentSource 提取 Markdown 正文与 HTML 表格融合内容，支持多个格式提取器降级重试。
      *
      * @param source 文档输入源
      * @return 提取的内容；没有可用提取器或所有提取器均失败时返回 null
      * @throws IllegalArgumentException 输入源为空
      */
     public String extract(DocumentSource source) {
-        return extract(source, DocumentOutputFormat.MARKDOWN);
+        return extract(source, DEFAULT_OUTPUT_FORMAT);
     }
 
     /**
@@ -319,7 +327,7 @@ public class DocumentExtractionService {
      * 无论成功或失败，最终都会调用输入源的清理方法。</p>
      *
      * @param source       文档输入源
-     * @param outputFormat 输出格式，传入 {@code null} 时使用纯 Markdown
+     * @param outputFormat 输出格式，传入 {@code null} 时使用 Markdown 正文与 HTML 表格融合格式
      * @return 第一个成功解析的非空结果；全部失败时返回 {@code null}
      * @throws IllegalArgumentException 输入源为空
      */
@@ -328,7 +336,7 @@ public class DocumentExtractionService {
             throw new IllegalArgumentException("DocumentSource cannot be null");
         }
         DocumentOutputFormat effectiveFormat = outputFormat == null
-            ? DocumentOutputFormat.MARKDOWN : outputFormat;
+            ? DEFAULT_OUTPUT_FORMAT : outputFormat;
 
         DocumentImagePublisher currentDocumentImagePublisher = documentImagePublisher;
         try {

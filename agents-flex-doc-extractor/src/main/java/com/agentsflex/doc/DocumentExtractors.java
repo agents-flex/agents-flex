@@ -67,7 +67,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从 URL 提取纯 Markdown 内容。
+     * 从 URL 提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param url HTTP、HTTPS 或 file URL
      * @return 提取结果
@@ -77,7 +77,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从 URL 提取纯 Markdown 内容，并显式提供原始文件名。
+     * 从 URL 提取 Markdown 正文与 HTML 表格融合内容，并显式提供原始文件名。
      *
      * @param url      HTTP、HTTPS 或 file URL
      * @param fileName 原始文件名
@@ -88,7 +88,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从 URL 提取纯 Markdown 内容，并显式提供原始文件元数据。
+     * 从 URL 提取 Markdown 正文与 HTML 表格融合内容，并显式提供原始文件元数据。
      *
      * @param url      HTTP、HTTPS 或 file URL
      * @param fileName 原始文件名
@@ -114,7 +114,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从本地文件提取纯 Markdown 内容。
+     * 从本地文件提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param file 本地文档文件
      * @return 提取结果
@@ -155,7 +155,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从输入流提取纯 Markdown 内容。
+     * 从输入流提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param inputStream 文档输入流
      * @param fileName    原始文件名
@@ -181,7 +181,7 @@ public class DocumentExtractors {
     }
 
     /**
-     * 从字节数组提取纯 Markdown 内容。
+     * 从字节数组提取 Markdown 正文与 HTML 表格融合内容。
      *
      * @param bytes    文档二进制内容
      * @param fileName 原始文件名

@@ -41,9 +41,13 @@ public class MergedTableFileIntegrationTest {
             writeDocx(file);
             DocumentExtractionService service = new DocumentExtractionService();
             String hybrid = service.extract(file.toFile(), DocumentOutputFormat.MARKDOWN_WITH_HTML_TABLES);
+            String defaultOutput = service.extract(file.toFile());
+            String nullFormatOutput = service.extract(file.toFile(), null);
             String html = service.extract(file.toFile(), DocumentOutputFormat.HTML);
             String markdown = service.extract(file.toFile(), DocumentOutputFormat.MARKDOWN);
 
+            assertEquals(hybrid, defaultOutput);
+            assertEquals(hybrid, nullFormatOutput);
             assertTrue(hybrid.startsWith("合并表格验证"));
             assertTrue(hybrid.contains("colspan=\"2\""));
             assertTrue(hybrid.contains("rowspan=\"2\""));

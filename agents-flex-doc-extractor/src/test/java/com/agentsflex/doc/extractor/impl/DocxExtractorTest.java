@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 public class DocxExtractorTest {
 
     @Test
-    public void shouldExtractImagesAndTablesAsMarkdown() throws Exception {
+    public void shouldExtractMarkdownContentAndHtmlTablesByDefault() throws Exception {
         byte[] docx = createDocx();
 
         String text = new DocumentExtractionService().extract(
@@ -32,9 +32,9 @@ public class DocxExtractorTest {
 
         assertTrue(text.contains("Document title"));
         assertTrue(text.contains("![Image](data:image/png;base64,"));
-        assertTrue(text.contains("| Name | Score |"));
-        assertTrue(text.contains("| --- | --- |"));
-        assertTrue(text.contains("| Alice | 95 |"));
+        assertTrue(text.contains("<table>"));
+        assertTrue(text.contains("<td>Name</td><td>Score</td>"));
+        assertTrue(text.contains("<td>Alice</td><td>95</td>"));
     }
 
     @Test
