@@ -19,7 +19,7 @@
 
 ### 1.2 核心特性
 
-- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Firecrawl、You.com、Serply、SerpBase、Outcrawl、SpecStream 等主流搜索引擎支持
+- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Firecrawl、You.com、Serply、SerpBase、Outcrawl、SpecStream、Keenable 等主流搜索引擎支持
 - **领域过滤**：支持白名单（allowedDomains）和黑名单（blockedDomains）域名过滤
 - **结果格式化**：自动将搜索结果转换为 Markdown 格式，便于 LLM 理解
 - **Builder 模式**：提供流畅的 API 构建方式
@@ -77,6 +77,7 @@ graph TB
     C --> M[SerpBaseSearchProvider]
     C --> N[OutcrawlSearchProvider]
     C --> O[SpecStreamSearchProvider]
+    C --> P[KeenableSearchProvider]
     C --> I[Custom Provider]
 
     B --> J[SearchRequest]
@@ -340,7 +341,24 @@ System.out.println(results);
 
 `allowedDomains` / `blockedDomains` 会转换为查询中的 `site:` / `-site:` 运算符。
 
-#### 示例 6：与 ChatModel 集成
+#### 示例 6：使用 Keenable Search
+
+```java
+import com.agentsflex.websearch.WebSearchTool;
+import com.agentsflex.websearch.keenable.KeenableSearchProvider;
+
+// 无需 API Key 即可使用（按 IP 限速，见 https://docs.keenable.ai/rate-limits）
+// 设置 KEENABLE_API_KEY 后使用付费接口，限额更高
+KeenableSearchProvider provider = new KeenableSearchProvider(System.getenv("KEENABLE_API_KEY"));
+
+WebSearchTool searchTool = new WebSearchTool(provider);
+String results = searchTool.webSearch("Java 17 new features", null, null);
+System.out.println(results);
+```
+
+一个 `allowedDomains` 会作为 `site` 参数发送；多个会作为查询中的 `site:` 运算符。`blockedDomains` 会作为 `exclude_domains` 发送。
+
+#### 示例 7：与 ChatModel 集成
 
 ```java
 WebSearchTool searchTool = new WebSearchTool(
@@ -370,6 +388,7 @@ export YDC_API_KEY="your-you-com-api-key"   # 可选，不设置则使用免费�
 export SERPLY_API_KEY="your-serply-api-key"
 export OUTCRAWL_API_KEY="your-outcrawl-api-key"
 export SPECSTREAM_API_KEY="your-specstream-api-key"
+export KEENABLE_API_KEY="your-keenable-api-key"   # 可选，不设置则使用免费额度
 ```
 
 
@@ -553,6 +572,7 @@ String results = tool.webSearch("Kubernetes deployment guide", null, null);
 | Serply | `serply/SerplySearchProvider.java` | https://serply.io/docs |
 | Outcrawl | `outcrawl/OutcrawlSearchProvider.java` | https://outcrawl.ai |
 | SpecStream | `specstream/SpecStreamSearchProvider.java` | https://specstream.ai/docs/search-api |
+| Keenable | `keenable/KeenableSearchProvider.java` | https://docs.keenable.ai/api-reference/search |
 
 
 
