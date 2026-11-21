@@ -19,7 +19,7 @@
 
 ### 1.2 核心特性
 
-- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Firecrawl、You.com、Serply、SerpBase、Outcrawl、SpecStream、Keenable 等主流搜索引擎支持
+- **多提供商支持**：内置百度千帆、Bocha、Brave、Tavily、Context.dev、Firecrawl、You.com、Serply、SerpBase、Outcrawl、SpecStream、Keenable 等主流搜索引擎支持
 - **领域过滤**：支持白名单（allowedDomains）和黑名单（blockedDomains）域名过滤
 - **结果格式化**：自动将搜索结果转换为 Markdown 格式，便于 LLM 理解
 - **Builder 模式**：提供流畅的 API 构建方式
@@ -71,6 +71,7 @@ graph TB
     C --> E[BochaSearchProvider]
     C --> F[BaiduQianfanSearchProvider]
     C --> G[TavilySearchProvider]
+    C --> CTX[ContextSearchProvider]
     C --> H[FirecrawlSearchProvider]
     C --> J[YouSearchProvider]
     C --> L[SerplySearchProvider]
@@ -324,6 +325,20 @@ String results = searchTool.webSearch("Java 17 new features", null, null);
 System.out.println(results);
 ```
 
+#### 使用 Context.dev Search
+
+```java
+import com.agentsflex.websearch.WebSearchTool;
+import com.agentsflex.websearch.context.ContextSearchProvider;
+
+WebSearchTool searchTool = new WebSearchTool(
+    new ContextSearchProvider(System.getenv("CONTEXT_DEV_API_KEY"))
+);
+String results = searchTool.webSearch("Java HttpClient timeout", null, null);
+```
+
+需要配置 `CONTEXT_DEV_API_KEY`，调用会消耗 Context 额度。默认使用与查询相关的 Highlights 作为结果摘要，并保留来源 URL。
+
 #### 示例 5：使用 You.com Search
 
 ```java
@@ -383,6 +398,7 @@ export BRAVE_API_KEY="your-brave-search-api-key"
 export BOCHA_API_KEY="your-bocha-api-key"
 export BAIDU_QIANFAN_API_KEY="your-baidu-api-key"
 export TAVILY_API_KEY="your-tavily-api-key"
+export CONTEXT_DEV_API_KEY="your-context-api-key"
 export FIRECRAWL_API_KEY="your-firecrawl-api-key"
 export YDC_API_KEY="your-you-com-api-key"   # 可选，不设置则使用免费额度
 export SERPLY_API_KEY="your-serply-api-key"
@@ -567,6 +583,7 @@ String results = tool.webSearch("Kubernetes deployment guide", null, null);
 | Bocha | `bocha/BochaSearchProvider.java` | https://bocha-ai.feishu.cn/wiki/HmtOw1z6vik14Fkdu5uc9VaInBb  |
 | Brave | `brave/BraveSearchProvider.java` | https://api.search.brave.com/app/documentation               |
 | Tavily | `tavily/TavilySearchProvider.java` | https://docs.tavily.com                                      |
+| Context.dev | `context/ContextSearchProvider.java` | https://docs.context.dev/api-reference/web-scraping/search |
 | Firecrawl | `firecrawl/FirecrawlSearchProvider.java` | https://docs.firecrawl.dev/features/search                   |
 | You.com | `you/YouSearchProvider.java` | https://you.com/docs/api-reference/search/v1-search?utm_source=agents-flex-agents-flex&utm_medium=oss_integration&utm_campaign=2026-10-oss-integrations&utm_content=docs |
 | Serply | `serply/SerplySearchProvider.java` | https://serply.io/docs |
