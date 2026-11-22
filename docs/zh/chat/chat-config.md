@@ -159,7 +159,7 @@ model.chat(new SimplePrompt("你好"), options);
 
 | 协议 | 请求字段 | 注意事项 |
 | --- | --- | --- |
-| `none` | 不发送 | 显式覆盖开关会报配置错误 |
+| `none` | 不发送 | 显式关闭时安全省略参数；显式开启必须先配置协议 |
 | `qwen` | `enable_thinking` | 布尔值 |
 | `deepseek` | `thinking.type` | `enabled` / `disabled` |
 | `openai` | `reasoning_effort` | `medium` / `none`，仅限支持这两个值的 Chat Completions 模型 |

@@ -11,8 +11,11 @@ public enum ThinkingProtocols implements ThinkingProtocol {
     NONE {
         @Override
         public void apply(Boolean enabled, Map<String, Object> body) {
-            if (enabled != null) {
-                throw new IllegalArgumentException("Configure a thinking protocol before overriding thinkingEnabled");
+            // 未配置协议时无法生成供应商专用的开关字段。显式关闭采用保守降级：不发送任何
+            // thinking 参数，兼容默认不启用思考或不支持思考的普通模型；显式开启仍必须先
+            // 配置协议，避免调用方误以为请求已经启用思考。
+            if (Boolean.TRUE.equals(enabled)) {
+                throw new IllegalArgumentException("Configure a thinking protocol before enabling thinking");
             }
         }
     },

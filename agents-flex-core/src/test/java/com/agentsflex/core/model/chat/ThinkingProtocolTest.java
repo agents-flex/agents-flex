@@ -44,6 +44,9 @@ public class ThinkingProtocolTest {
         assertEquals("none", body(config("ollama"), disabled).getString("reasoning_effort"));
         assertEquals(Boolean.TRUE, body(config("ollama-native"), enabled).getBoolean("think"));
         assertThrows(IllegalArgumentException.class, () -> body(config("none"), enabled));
+        assertFalse(body(config("none"), disabled).containsKey("thinking"));
+        assertFalse(body(config("none"), disabled).containsKey("enable_thinking"));
+        assertFalse(body(config("none"), disabled).containsKey("reasoning_effort"));
         assertThrows(IllegalArgumentException.class, () -> body(config("typo"), enabled));
         BaseChatConfig unsupported = config("qwen");
         unsupported.setSupportThinking(false);
