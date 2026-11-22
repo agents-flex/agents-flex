@@ -42,12 +42,23 @@ public final class JdbcAsyncTaskStore implements AsyncTaskStore {
 
     @Override
     public long currentTimeMillis() {
-        try (Connection c = connection(); PreparedStatement s = c.prepareStatement("SELECT CURRENT_TIMESTAMP"); ResultSet r = s.executeQuery()) {
-            if (!r.next()) throw new IllegalStateException("Database did not return current time");
-            return r.getTimestamp(1).getTime();
+        try (Connection c = connection()) {
+            try (PreparedStatement s = c.prepareStatement(
+                databaseTimeQuery(c.getMetaData().getDatabaseProductName()));
+                 ResultSet r = s.executeQuery()) {
+                if (!r.next()) throw new IllegalStateException("Database did not return current time");
+                return r.getTimestamp(1).getTime();
+            }
         } catch (SQLException e) {
             throw failure("read database time", e);
         }
+    }
+
+    static String databaseTimeQuery(String databaseProductName) {
+        return databaseProductName != null
+            && databaseProductName.toLowerCase(Locale.ROOT).contains("oracle")
+            ? "SELECT CURRENT_TIMESTAMP FROM DUAL"
+            : "SELECT CURRENT_TIMESTAMP";
     }
 
     @Override

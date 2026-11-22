@@ -91,6 +91,18 @@ public class JdbcAgentStoresContractTest {
     }
 
     @Test
+    public void shouldUseOracleCompatibleDatabaseTimeQuery() {
+        assertEquals("SELECT CURRENT_TIMESTAMP FROM DUAL",
+            JdbcAgentTurnStore.databaseTimeQuery("Oracle"));
+        assertEquals("SELECT CURRENT_TIMESTAMP FROM DUAL",
+            JdbcAgentTurnStore.databaseTimeQuery("Oracle Database 23ai"));
+        assertEquals("SELECT CURRENT_TIMESTAMP",
+            JdbcAgentTurnStore.databaseTimeQuery("MySQL"));
+        assertEquals("SELECT CURRENT_TIMESTAMP",
+            JdbcAgentTurnStore.databaseTimeQuery("H2"));
+    }
+
+    @Test
     public void shouldPersistCompressionStateWithCasAndRestoreSummaryMessages() {
         AgentContextCompressionStateStore store = config.compressionStateStore();
         AgentContextCompressionState first = new AgentContextCompressionState(1,

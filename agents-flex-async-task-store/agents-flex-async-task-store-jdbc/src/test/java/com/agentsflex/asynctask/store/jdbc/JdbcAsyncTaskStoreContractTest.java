@@ -40,6 +40,18 @@ import static org.junit.Assert.*;
  * 延迟提交、租约 fencing 和并发领取，而不是只验证 SQL 能否执行。</p>
  */
 public class JdbcAsyncTaskStoreContractTest {
+    @Test
+    public void shouldUseOracleCompatibleDatabaseTimeQuery() {
+        assertEquals("SELECT CURRENT_TIMESTAMP FROM DUAL",
+            JdbcAsyncTaskStore.databaseTimeQuery("Oracle"));
+        assertEquals("SELECT CURRENT_TIMESTAMP FROM DUAL",
+            JdbcAsyncTaskStore.databaseTimeQuery("Oracle Database 23ai"));
+        assertEquals("SELECT CURRENT_TIMESTAMP",
+            JdbcAsyncTaskStore.databaseTimeQuery("MySQL"));
+        assertEquals("SELECT CURRENT_TIMESTAMP",
+            JdbcAsyncTaskStore.databaseTimeQuery("H2"));
+    }
+
     private JdbcAsyncTaskStore store;
     private DataSource dataSource;
     private String tablePrefix;

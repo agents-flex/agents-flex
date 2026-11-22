@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Locale;
 
 /**
  * 使用 JDBC 事务、条件更新和乐观锁保存 AgentTurn Snapshot。
@@ -21,14 +22,23 @@ public final class JdbcAgentTurnStore extends JdbcAgentStoreSupport implements A
 
     @Override
     public long currentTimeMillis() {
-        try (Connection connection = connection(); PreparedStatement statement =
-            connection.prepareStatement("SELECT CURRENT_TIMESTAMP");
-             ResultSet row = statement.executeQuery()) {
-            if (!row.next()) throw new IllegalStateException("Database did not return current time");
-            return row.getTimestamp(1).getTime();
+        try (Connection connection = connection()) {
+            try (PreparedStatement statement = connection.prepareStatement(
+                databaseTimeQuery(connection.getMetaData().getDatabaseProductName()));
+                 ResultSet row = statement.executeQuery()) {
+                if (!row.next()) throw new IllegalStateException("Database did not return current time");
+                return row.getTimestamp(1).getTime();
+            }
         } catch (SQLException error) {
             throw failure("read database time", error);
         }
+    }
+
+    static String databaseTimeQuery(String databaseProductName) {
+        return databaseProductName != null
+            && databaseProductName.toLowerCase(Locale.ROOT).contains("oracle")
+            ? "SELECT CURRENT_TIMESTAMP FROM DUAL"
+            : "SELECT CURRENT_TIMESTAMP";
     }
 
     @Override
